@@ -23,9 +23,22 @@ export const exportData = async () => {
         if (Platform.OS === 'android') {
             // Android: Use Storage Access Framework to let user pick folder
             try {
+                // DEBUG: Check if SAF exists
+                console.log('FileSystem Keys:', Object.keys(FileSystem));
+
+                if (!FileSystem.StorageAccessFramework) {
+                    Alert.alert('CRITICAL DEBUG', 'FileSystem.StorageAccessFramework is undefined!');
+                    console.error('FileSystem.StorageAccessFramework is missing', FileSystem);
+                    return;
+                }
+
+                Alert.alert('DEBUG', 'Requesting directory permissions...');
                 const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+                console.log('Permissions Result:', permissions);
 
                 if (permissions.granted) {
+                    Alert.alert('DEBUG', `Permission Granted: ${permissions.directoryUri}`);
+
                     const uri = await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/json');
                     await FileSystem.writeAsStringAsync(uri, jsonString, { encoding: FileSystem.EncodingType.UTF8 });
                     Alert.alert('完了', 'バックアップファイルを保存しました');
