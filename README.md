@@ -1,24 +1,54 @@
-# Kashimo - P2P 금전거래 관리 앱
+# Kashimo (カシモ)
 
-> **カシモ** - 友達との お金、もう忘れない  
+> **友達との お金、もう忘れない**  
 > (친구와의 돈, 이제 잊지 않아요)
 
-## 📱 프로젝트 개요
+**Kashimo**는 인터넷 연결 없이도 동작하는 **오프라인 퍼스트(Offline-First)** 개인 금전거래 관리 앱입니다.
+상대방에게 앱 설치를 강요하지 않고, 나만의 기록으로 확실하게 관리하세요.
 
-개인 간 금전거래(빌려준 돈/빌린 돈)를 쉽게 기록하고, 반환 기한에 맞춰 자동으로 리마인더를 보내주는 앱입니다.
+## 📱 주요 기능
 
-### 주요 차별점
-- ✅ 상대방 앱 설치 불필요 (나만 기록하면 됨)
-- ✅ 단계별 자동 알림 (D-7, D-3, D-1, D-Day)
-- ✅ LINE 연동 리마인더 메시지
-- ✅ 심플한 UI (가계부 기능 없음)
+### 1. 🔒 완벽한 프라이버시 (Local Database)
+- 모든 데이터는 사용자의 휴대폰(SQLite)에만 저장됩니다.
+- 회원가입이나 로그인이 전혀 필요 없습니다.
+- 인터넷이 끊겨도 모든 기능을 100% 사용할 수 있습니다.
+
+### 2. 💸 스마트한 거래 관리
+- **빌려준 돈 / 빌린 돈**을 한눈에 파악 (Dashboard)
+- 잊어버리기 쉬운 반환 기한 관리
+- **부분 상환(Partial Payment)** 지원
+- 거래완료 처리 및 실행 취소(Undo) 기능
+
+### 3. 🔔 자동 리마인더
+- 반환 기한에 맞춰 자동으로 알림 발송
+- **알림 주기**: D-7, D-3, D-1, D-Day
+- 사용자가 직접 독촉하지 않아도 앱이 알려줍니다.
+
+### 4. 💾 데이터 안전 보관 (Backup & Restore)
+- **백업**: 전체 거래 내역을 JSON 파일로 추출하여 안전하게 보관
+- **복구**: 폰을 바꿔도 백업 파일을 불러와 그대로 복원 가능
+- **플랫폼 지원**: Android(SAF), iOS(Share Sheet) 완벽 대응
+
+---
+
+## 📸 스크린샷
+
+| 홈 화면 (대시보드) | 거래 추가 | 거래 목록 |
+|:---:|:---:|:---:|
+| <img src="assets/screenshots/home.png" width="200" /> | <img src="assets/screenshots/add.png" width="200" /> | <img src="assets/screenshots/list.png" width="200" /> |
+
+*(스크린샷을 `assets/screenshots/` 폴더에 `home.png`, `add.png`, `list.png` 이름으로 넣어주세요)*
+
+---
 
 ## 🛠 기술 스택
 
-- **Frontend**: React Native + Expo
+- **Framework**: React Native (Expo SDK 52)
 - **Language**: TypeScript
-- **Backend**: Firebase (Firestore, Auth, FCM)
-- **Notifications**: Firebase Cloud Messaging + LINE Messaging API
+- **Database**: `expo-sqlite` (Local)
+- **File System**: `expo-file-system` (Legacy Import)
+- **Notification**: `expo-notifications` (Local Push)
+- **UI Styling**: Custom Design System (No UI Library)
 
 ## 📁 프로젝트 구조
 
@@ -26,59 +56,47 @@
 kashimo/
 ├── src/
 │   ├── components/     # 재사용 가능한 UI 컴포넌트
-│   ├── screens/        # 화면 컴포넌트
-│   ├── navigation/     # 네비게이션 설정
-│   ├── hooks/          # 커스텀 훅
-│   ├── services/       # API, Firebase 서비스
-│   ├── stores/         # 상태 관리
-│   ├── types/          # TypeScript 타입 정의
-│   ├── constants/      # 상수
-│   ├── styles/         # 디자인 시스템
-│   └── utils/          # 유틸리티 함수
-├── assets/             # 이미지, 폰트 등
-├── app.json            # Expo 설정
-└── package.json
+│   ├── screens/        # 화면 (Home, Add, List, Detail, Settings)
+│   ├── services/       # 비즈니스 로직
+│   │   ├── database.ts    # SQLite 연동 (Core)
+│   │   ├── backup.ts      # 백업/복구 (JSON)
+│   │   └── notifications.ts # 푸시 알림
+│   ├── constants/      # 상수 및 설정
+│   └── styles/         # 디자인 토큰 (Theme)
+├── assets/             # 이미지, 폰트
+└── app.json            # Expo 설정
 ```
+
+---
 
 ## 🚀 시작하기
 
-### 개발 환경 설정
+### 1. 설치 및 실행
 
 ```bash
+# 프로젝트 클론
+git clone https://github.com/specialMinority/kashimo.git
+
 # 의존성 설치
 npm install
 
 # 개발 서버 실행
-npm start
-
-# iOS 시뮬레이터
-npm run ios
-
-# Android 에뮬레이터
-npm run android
+npx expo start
 ```
 
-### Firebase 설정
+### 2. 빌드 (Android)
 
-1. Firebase Console에서 프로젝트 생성
-2. `google-services.json` (Android) 다운로드
-3. `GoogleService-Info.plist` (iOS) 다운로드
-4. 환경 변수 설정 (`.env` 파일)
+*Expo EAS Build를 사용합니다.*
 
-## 📋 개발 로드맵
+```bash
+# Preview 빌드 (APK)
+npx eas-cli build --profile preview --platform android
+```
 
-- [ ] Phase 1: MVP (4주)
-  - [ ] 거래 CRUD
-  - [ ] 대시보드
-  - [ ] 푸시 알림
-- [ ] Phase 2: 핵심 기능 강화 (4주)
-  - [ ] LINE 연동
-  - [ ] 그룹 정산
-  - [ ] 영수증 첨부
-- [ ] Phase 3: 성장
-  - [ ] 유저 피드백 반영
-  - [ ] 마케팅
+> **Note**: Android 빌드 시 `react-native-reanimated` 호환성 문제 해결을 위해 `patch-package`가 자동으로 실행됩니다.
 
 ---
 
-*Created: 2026-01-24*
+## 📜 라이선스
+
+This project is licensed under the MIT License.
