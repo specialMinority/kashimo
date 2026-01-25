@@ -33,11 +33,11 @@
 
 ## 📸 스크린샷
 
-| 홈 화면 (대시보드) | 거래 추가 | 거래 목록 |
+| Screen 1 | Screen 2 | Screen 3 |
 |:---:|:---:|:---:|
-| <img src="assets/screenshots/home.png" width="200" /> | <img src="assets/screenshots/add.png" width="200" /> | <img src="assets/screenshots/list.png" width="200" /> |
+| <img src="assets/screenshots/screen_1.jpg" width="200" /> | <img src="assets/screenshots/screen_2.jpg" width="200" /> | <img src="assets/screenshots/screen_3.jpg" width="200" /> |
 
-*(스크린샷을 `assets/screenshots/` 폴더에 `home.png`, `add.png`, `list.png` 이름으로 넣어주세요)*
+*(실제 앱 구동 화면)*
 
 ---
 
