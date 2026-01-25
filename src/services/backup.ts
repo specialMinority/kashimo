@@ -1,11 +1,4 @@
-import {
-    StorageAccessFramework,
-    writeAsStringAsync,
-    readAsStringAsync,
-    EncodingType,
-    documentDirectory,
-    cacheDirectory
-} from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert, Platform } from 'react-native';
@@ -30,16 +23,11 @@ export const exportData = async () => {
         if (Platform.OS === 'android') {
             // Android: Use Storage Access Framework to let user pick folder
             try {
-                // 권한 요청
-                const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
+                const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
 
                 if (permissions.granted) {
-                    // 사용자 선택 폴더에 파일 생성
-                    const uri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/json');
-
-                    // 파일 쓰기
-                    await writeAsStringAsync(uri, jsonString, { encoding: EncodingType.UTF8 });
-
+                    const uri = await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/json');
+                    await FileSystem.writeAsStringAsync(uri, jsonString, { encoding: FileSystem.EncodingType.UTF8 });
                     Alert.alert('完了', 'バックアップファイルを保存しました');
                 } else {
                     Alert.alert('キャンセル', '保存先が選択されませんでした');
@@ -50,15 +38,11 @@ export const exportData = async () => {
             }
         } else {
             // iOS: Use Sharing
-            const baseDir = cacheDirectory || documentDirectory;
+            const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
             if (!baseDir) throw new Error("No available directory for temp file");
 
             const filePath = `${baseDir}${fileName}`;
-
-            // Debug: Alert path
-            Alert.alert('Debug (iOS)', `Path: ${filePath}`);
-
-            await writeAsStringAsync(filePath, jsonString);
+            await FileSystem.writeAsStringAsync(filePath, jsonString);
 
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(filePath);
@@ -85,7 +69,7 @@ export const importData = async () => {
         if (result.canceled) return;
 
         const fileUri = result.assets[0].uri;
-        const jsonString = await readAsStringAsync(fileUri);
+        const jsonString = await FileSystem.readAsStringAsync(fileUri);
 
         let parsedData;
         try {
