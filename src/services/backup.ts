@@ -1,4 +1,4 @@
-import { documentDirectory, cacheDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert, Platform } from 'react-native';
@@ -11,8 +11,8 @@ import { Transaction } from '../types';
 export const exportData = async () => {
     try {
         console.log('Debug: checking FileSystem object...');
-        console.log('documentDirectory:', documentDirectory);
-        console.log('cacheDirectory:', cacheDirectory);
+        // DEBUG: Breakpoint 1
+        Alert.alert('Debug', `Doc: ${FileSystem.documentDirectory}, Cache: ${FileSystem.cacheDirectory}`);
 
         const transactions = await getAllTransactions();
         const backupData = {
@@ -25,15 +25,22 @@ export const exportData = async () => {
         const fileName = `kashimo_backup_${new Date().getTime()}.json`;
 
         // Android/Expo Go issue workaround: Use cacheDirectory for sharing
-        const baseDir = cacheDirectory || documentDirectory;
+        const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+
+        // DEBUG: Breakpoint 2
+        Alert.alert('Debug', `BaseDir: ${baseDir}`);
+
         if (!baseDir) {
-            console.error('FileSystem keys available:', { documentDirectory, cacheDirectory });
-            throw new Error(`Storage directory not available (doc: ${documentDirectory}, cache: ${cacheDirectory})`);
+            console.error('FileSystem keys available:', { documentDirectory: FileSystem.documentDirectory, cacheDirectory: FileSystem.cacheDirectory });
+            throw new Error(`Storage directory not available (doc: ${FileSystem.documentDirectory}, cache: ${FileSystem.cacheDirectory})`);
         }
 
         const filePath = `${baseDir}${fileName}`;
 
-        await writeAsStringAsync(filePath, jsonString);
+        // DEBUG: Breakpoint 3
+        Alert.alert('Debug', `Writing to: ${filePath}`);
+
+        await FileSystem.writeAsStringAsync(filePath, jsonString);
 
         if (await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(filePath);
@@ -59,7 +66,7 @@ export const importData = async () => {
         if (result.canceled) return;
 
         const fileUri = result.assets[0].uri;
-        const jsonString = await readAsStringAsync(fileUri);
+        const jsonString = await FileSystem.readAsStringAsync(fileUri);
 
         let parsedData;
         try {
