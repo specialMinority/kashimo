@@ -1,8 +1,15 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import {
+    StorageAccessFramework,
+    writeAsStringAsync,
+    readAsStringAsync,
+    documentDirectory,
+    cacheDirectory,
+    EncodingType
+} from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert, Platform } from 'react-native';
-import { getAllTransactions, addTransaction, getDb } from './database';
+import { getAllTransactions, getDb } from './database';
 import { Transaction } from '../types';
 
 /**
@@ -24,23 +31,22 @@ export const exportData = async () => {
             // Android: Use Storage Access Framework to let user pick folder
             try {
                 // DEBUG: Check if SAF exists
-                console.log('FileSystem Keys:', Object.keys(FileSystem));
+                console.log('SAF Object:', StorageAccessFramework);
 
-                if (!FileSystem.StorageAccessFramework) {
-                    Alert.alert('CRITICAL DEBUG', 'FileSystem.StorageAccessFramework is undefined!');
-                    console.error('FileSystem.StorageAccessFramework is missing', FileSystem);
+                if (!StorageAccessFramework) {
+                    Alert.alert('CRITICAL ERROR', 'StorageAccessFramework is undefined! explicit import failed.');
                     return;
                 }
 
                 Alert.alert('DEBUG', 'Requesting directory permissions...');
-                const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+                const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
                 console.log('Permissions Result:', permissions);
 
                 if (permissions.granted) {
                     Alert.alert('DEBUG', `Permission Granted: ${permissions.directoryUri}`);
 
-                    const uri = await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/json');
-                    await FileSystem.writeAsStringAsync(uri, jsonString, { encoding: FileSystem.EncodingType.UTF8 });
+                    const uri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/json');
+                    await writeAsStringAsync(uri, jsonString, { encoding: EncodingType.UTF8 });
                     Alert.alert('完了', 'バックアップファイルを保存しました');
                 } else {
                     Alert.alert('キャンセル', '保存先が選択されませんでした');
@@ -51,11 +57,11 @@ export const exportData = async () => {
             }
         } else {
             // iOS: Use Sharing
-            const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+            const baseDir = cacheDirectory || documentDirectory;
             if (!baseDir) throw new Error("No available directory for temp file");
 
             const filePath = `${baseDir}${fileName}`;
-            await FileSystem.writeAsStringAsync(filePath, jsonString);
+            await writeAsStringAsync(filePath, jsonString);
 
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(filePath);
@@ -82,7 +88,7 @@ export const importData = async () => {
         if (result.canceled) return;
 
         const fileUri = result.assets[0].uri;
-        const jsonString = await FileSystem.readAsStringAsync(fileUri);
+        const jsonString = await readAsStringAsync(fileUri);
 
         let parsedData;
         try {
