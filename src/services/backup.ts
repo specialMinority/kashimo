@@ -30,21 +30,16 @@ export const exportData = async () => {
         if (Platform.OS === 'android') {
             // Android: Use Storage Access Framework to let user pick folder
             try {
-                // DEBUG: Check if SAF exists
-                console.log('SAF Object:', StorageAccessFramework);
-
                 if (!StorageAccessFramework) {
-                    Alert.alert('CRITICAL ERROR', 'StorageAccessFramework is undefined! explicit import failed.');
+                    Alert.alert('Error', 'Storage Access Framework is not supported on this device.');
                     return;
                 }
 
-                Alert.alert('DEBUG', 'Requesting directory permissions...');
+                // 권한 요청
                 const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
-                console.log('Permissions Result:', permissions);
 
                 if (permissions.granted) {
-                    Alert.alert('DEBUG', `Permission Granted: ${permissions.directoryUri}`);
-
+                    // 사용자 선택 폴더에 파일 생성
                     const uri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/json');
                     await writeAsStringAsync(uri, jsonString, { encoding: EncodingType.UTF8 });
                     Alert.alert('完了', 'バックアップファイルを保存しました');
@@ -53,7 +48,7 @@ export const exportData = async () => {
                 }
             } catch (e) {
                 console.error('SAF Error:', e);
-                Alert.alert('Error', `SAF Failed: ${e instanceof Error ? e.message : String(e)}`);
+                Alert.alert('Error', `Backup failed: ${e instanceof Error ? e.message : String(e)}`);
             }
         } else {
             // iOS: Use Sharing
