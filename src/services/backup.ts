@@ -1,4 +1,11 @@
-import * as FileSystem from 'expo-file-system';
+import {
+    StorageAccessFramework,
+    writeAsStringAsync,
+    readAsStringAsync,
+    EncodingType,
+    documentDirectory,
+    cacheDirectory
+} from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert, Platform } from 'react-native';
@@ -10,10 +17,6 @@ import { Transaction } from '../types';
  */
 export const exportData = async () => {
     try {
-        console.log('Debug: checking FileSystem object...');
-        // DEBUG: Breakpoint 1
-        Alert.alert('Debug', `Doc: ${FileSystem.documentDirectory}, Cache: ${FileSystem.cacheDirectory}`);
-
         const transactions = await getAllTransactions();
         const backupData = {
             version: 1,
@@ -24,28 +27,44 @@ export const exportData = async () => {
         const jsonString = JSON.stringify(backupData, null, 2);
         const fileName = `kashimo_backup_${new Date().getTime()}.json`;
 
-        // Android/Expo Go issue workaround: Use cacheDirectory for sharing
-        const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+        if (Platform.OS === 'android') {
+            // Android: Use Storage Access Framework to let user pick folder
+            try {
+                // 권한 요청
+                const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
 
-        // DEBUG: Breakpoint 2
-        Alert.alert('Debug', `BaseDir: ${baseDir}`);
+                if (permissions.granted) {
+                    // 사용자 선택 폴더에 파일 생성
+                    const uri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/json');
 
-        if (!baseDir) {
-            console.error('FileSystem keys available:', { documentDirectory: FileSystem.documentDirectory, cacheDirectory: FileSystem.cacheDirectory });
-            throw new Error(`Storage directory not available (doc: ${FileSystem.documentDirectory}, cache: ${FileSystem.cacheDirectory})`);
-        }
+                    // 파일 쓰기
+                    await writeAsStringAsync(uri, jsonString, { encoding: EncodingType.UTF8 });
 
-        const filePath = `${baseDir}${fileName}`;
-
-        // DEBUG: Breakpoint 3
-        Alert.alert('Debug', `Writing to: ${filePath}`);
-
-        await FileSystem.writeAsStringAsync(filePath, jsonString);
-
-        if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(filePath);
+                    Alert.alert('完了', 'バックアップファイルを保存しました');
+                } else {
+                    Alert.alert('キャンセル', '保存先が選択されませんでした');
+                }
+            } catch (e) {
+                console.error('SAF Error:', e);
+                Alert.alert('Error', `SAF Failed: ${e instanceof Error ? e.message : String(e)}`);
+            }
         } else {
-            Alert.alert('Error', 'Sharing is not available on this device');
+            // iOS: Use Sharing
+            const baseDir = cacheDirectory || documentDirectory;
+            if (!baseDir) throw new Error("No available directory for temp file");
+
+            const filePath = `${baseDir}${fileName}`;
+
+            // Debug: Alert path
+            Alert.alert('Debug (iOS)', `Path: ${filePath}`);
+
+            await writeAsStringAsync(filePath, jsonString);
+
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(filePath);
+            } else {
+                Alert.alert('Error', 'Sharing is not available on this device');
+            }
         }
     } catch (error) {
         console.error('Backup failed detailed:', error);
@@ -66,7 +85,7 @@ export const importData = async () => {
         if (result.canceled) return;
 
         const fileUri = result.assets[0].uri;
-        const jsonString = await FileSystem.readAsStringAsync(fileUri);
+        const jsonString = await readAsStringAsync(fileUri);
 
         let parsedData;
         try {
@@ -83,11 +102,6 @@ export const importData = async () => {
 
         const transactions = parsedData.transactions as Transaction[];
         const database = getDb();
-
-        // 기존 데이터 삭제 여부 확인? 
-        // 여기서는 안전하게 "덮어쓰기" 대신 "병합" 또는 "전체 교체" 중 선택해야 함.
-        // 현재는 안전을 위해 "기존 데이터 유지 + 새 데이터 추가(ID 중복 시 무시)" 로직이 좋지만,
-        // 복구라는 의미가 강하므로 "전체 삭제 후 복구" 옵션을 제공하는 것이 깔끔함.
 
         Alert.alert(
             '復元確認',
