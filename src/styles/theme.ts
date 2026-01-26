@@ -95,7 +95,15 @@ export const typography = {
         fontSize: 16,
         fontWeight: 'bold',
     },
-};
+    h3: {
+        fontSize: 24,
+        fontWeight: 'bold',
+    },
+    body2: {
+        fontSize: 14,
+        fontWeight: 'normal',
+    },
+} as const;
 
 export const spacing = {
     xs: 4,

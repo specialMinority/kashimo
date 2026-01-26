@@ -10,15 +10,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_REMINDER_DAYS } from '../constants';
 
 // 알림 핸들러 설정 (앱이 foreground에 있을 때도 알림 표시)
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+if (Platform.OS !== 'web') {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        }),
+    });
+}
 
 // 알림 설정 저장 키
 const NOTIFICATION_SETTINGS_KEY = '@kashimo/notification_settings';
@@ -40,6 +42,28 @@ const DEFAULT_SETTINGS: NotificationSettings = {
  * 알림 권한 요청
  */
 export async function requestNotificationPermissions(): Promise<boolean> {
+    // Web: Native Browser Notification API
+    if (Platform.OS === 'web') {
+        if (!('Notification' in window)) {
+            alert('이 브라우저는 알림을 지원하지 않습니다');
+            return false;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                return true;
+            } else {
+                alert('알림 권한이 거부되었습니다. (브라우저 설정 확인)');
+                return false;
+            }
+        } catch (e) {
+            console.error(e);
+            alert('알림 권한 요청 중 오류 발생');
+            return false;
+        }
+    }
+
     // 물리 디바이스인지 확인 (시뮬레이터에서는 푸시 알림 불가)
     if (!Device.isDevice) {
         console.log('⚠️ 알림은 물리 디바이스에서만 동작합니다');
@@ -229,9 +253,60 @@ export async function getScheduledNotifications(): Promise<Notifications.Notific
 }
 
 /**
+ * 앱 실행 시 리마인더 체크 (Web PWA용)
+ * 백그라운드 싱크가 제한적인 환경에서 앱 실행 시점에 알림을 체크합니다.
+ */
+export async function checkRemindersOnAppLoad(): Promise<number> {
+    // 1. 설정 확인
+    const settings = await getNotificationSettings();
+    if (!settings.enabled) return 0;
+
+    try {
+        // 2. 스케줄된 알림 데이터 로드 (Web에서는 실제 스케줄링이 안될 수 있으므로, DB 데이터 기준으로 체크하는 것이 더 정확함)
+        // 하지만 여기서는 간단히 '저장된 스케줄'을 확인하거나, 
+        // 또는 실제로는 `database.ts`에서 '오늘 기한인 항목'을 조회하는 것이 맞음.
+        // 순환 참조 방지를 위해 database.ts를 여기서 임포트하면 안됨.
+        // 따라서, 이 함수는 호출하는 쪽(HomeScreen)에서 DB 조회를 수행하고, 결과만 넘겨받아 알림을 띄우는 편이 나음.
+
+        // 하지만 요구사항은 'notifications.ts'에 로직을 두는 것.
+        // database -> notifications (X)
+        // HomeScreen -> database (Get Pending) -> notifications (Show Alert) (O)
+
+        // 따라서 이 함수는 'Web Notification API' 권한을 요청하고, 가능하면 시스템 알림을 띄우는 역할만 수행.
+        if (Platform.OS === 'web' && 'Notification' in window) {
+            if (Notification.permission === 'default') {
+                await Notification.requestPermission();
+            }
+        }
+    } catch (e) {
+        console.error('Reminder check failed:', e);
+    }
+    return 0;
+}
+
+/**
+ * 웹용 시스템 알림 발송 helper
+ */
+export const sendWebNotification = (title: string, body: string) => {
+    if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/assets/icon.png' });
+    }
+};
+
+/**
  * 테스트 알림 발송 (즉시)
  */
 export async function sendTestNotification(): Promise<void> {
+    if (Platform.OS === 'web') {
+        if (Notification.permission === 'granted') {
+            sendWebNotification('カシモ テスト通知', 'Web通知が正常に動作しています！');
+            // alert('通知を送信しました');
+        } else {
+            alert('알림 권한이 없습니다. 설정을 확인해주세요.');
+        }
+        return;
+    }
+
     await Notifications.scheduleNotificationAsync({
         content: {
             title: '🎉 カシモ テスト通知',

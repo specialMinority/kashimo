@@ -23,6 +23,7 @@ import { colors, spacing, borderRadius, shadows, typography } from '../styles/th
 import { Transaction, TransactionType } from '../types';
 import { getTransaction, updateTransaction } from '../services/database';
 import { scheduleTransactionReminders, cancelTransactionReminders } from '../services/notifications';
+import { CustomAlertModal } from '../components/CustomAlertModal';
 
 // 네비게이션 타입
 type RootStackParamList = {
@@ -73,21 +74,37 @@ export default function EditScreen() {
         loadTransaction();
     }, [loadTransaction]);
 
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState<{
+        visible: boolean;
+        title: string;
+        message?: string;
+        buttons: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[];
+    }>({ visible: false, title: '', buttons: [] });
+
+    const showAlert = (title: string, message: string, buttons: any[] = [{ text: 'OK', onPress: closeAlert }]) => {
+        setAlertConfig({ visible: true, title, message, buttons });
+    };
+
+    const closeAlert = () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+    };
+
     // 저장 처리
     const handleSave = async () => {
         if (!transaction) return;
 
         // 유효성 검사
         if (!counterparty.trim()) {
-            Alert.alert('エラー', '相手の名前を入力してください');
+            showAlert('エラー', '相手の名前を入力してください');
             return;
         }
         if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-            Alert.alert('エラー', '金額を正しく入力してください');
+            showAlert('エラー', '金額を正しく入力してください');
             return;
         }
         if (!dueDate) {
-            Alert.alert('エラー', '返済期限を入力してください');
+            showAlert('エラー', '返済期限を入力してください');
             return;
         }
 
@@ -100,7 +117,7 @@ export default function EditScreen() {
         // 날짜 형식 검증 (YYYY-MM-DD)
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         if (!dateRegex.test(formattedDate)) {
-            Alert.alert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
+            showAlert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
             return;
         }
 
@@ -126,11 +143,18 @@ export default function EditScreen() {
                 type
             );
 
-            Alert.alert('完了', '修正しました');
-            navigation.goBack();
+            showAlert('完了', '修正しました', [
+                {
+                    text: '確認',
+                    onPress: () => {
+                        closeAlert();
+                        navigation.goBack(); // Detail 화면으로 돌아감
+                    }
+                }
+            ]);
         } catch (error) {
             console.error(error);
-            Alert.alert('エラー', '保存に失敗しました');
+            showAlert('エラー', '保存に失敗しました');
         } finally {
             setSaving(false);
         }
@@ -293,6 +317,13 @@ export default function EditScreen() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+            <CustomAlertModal
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                onDismiss={closeAlert}
+            />
         </KeyboardAvoidingView>
     );
 }

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles/theme';
@@ -57,9 +58,9 @@ export default function TabNavigator() {
                 tabBarStyle: {
                     backgroundColor: colors.neutral.white,
                     borderTopColor: colors.neutral.border,
-                    paddingBottom: 5,
-                    paddingTop: 5,
-                    height: 60,
+                    paddingBottom: Platform.OS === 'web' ? 15 : 5,
+                    paddingTop: Platform.OS === 'web' ? 8 : 5,
+                    height: Platform.OS === 'web' ? 85 : 60,
                 },
                 tabBarLabelStyle: {
                     fontSize: 12,

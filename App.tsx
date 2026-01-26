@@ -3,22 +3,24 @@
  * 앱 진입점 및 네비게이션 설정
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, Platform, TouchableOpacity, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as NavigationBar from 'expo-navigation-bar';
-import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 
 import TabNavigator from './src/navigation/TabNavigator';
 import DetailScreen from './src/screens/DetailScreen';
 import EditScreen from './src/screens/EditScreen';
 import { colors } from './src/styles/theme';
-import { requestNotificationPermissions } from './src/services/notifications';
-
 import { initDatabase } from './src/services/database';
+import { requestNotificationPermissions } from './src/services/notifications';
 
 // 네비게이션 타입 정의
 export type RootStackParamList = {
@@ -29,56 +31,134 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// 스플래시 스크린 유지
+try {
+  SplashScreen.preventAutoHideAsync().catch(() => { });
+} catch (e) { }
+
+// 에러 바운더리 (안정성 확보)
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.neutral.background, padding: 20 }}>
+          <Ionicons name="warning" size={64} color={colors.accent.coral} />
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.neutral.textPrimary, marginTop: 20 }}>App Error Detected</Text>
+          <Text style={{ marginTop: 10, textAlign: 'center', color: colors.neutral.textSecondary }}>{this.state.error?.toString()}</Text>
+          <TouchableOpacity
+            style={{ marginTop: 30, padding: 15, backgroundColor: colors.primary.main, borderRadius: 10 }}
+            onPress={() => window.location.reload()}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>Reload App</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
-  // 앱 시작 시 초기 설정
+  const [fontsLoaded, fontError] = useFonts({
+    ...Ionicons.font,
+  });
+
+  const [isReady, setIsReady] = useState(false);
+
   useEffect(() => {
     const setup = async () => {
-      await initDatabase();
-      await requestNotificationPermissions();
+      try {
+        await initDatabase();
+        await requestNotificationPermissions();
+      } catch (e) {
+        console.error('Setup failed', e);
+      }
     };
     setup();
 
-    // Android 하단 바 숨기기 (몰입 모드)
     if (Platform.OS === 'android') {
-      NavigationBar.setVisibilityAsync('hidden');
-      NavigationBar.setBehaviorAsync('overlay-swipe');
+      try {
+        NavigationBar.setVisibilityAsync('hidden');
+        NavigationBar.setBehaviorAsync('overlay-swipe');
+      } catch (e) { }
     }
+
+    // 5초 타임아웃
+    const timer = setTimeout(() => {
+      setIsReady(true);
+    }, 5000);
+    return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      setIsReady(true);
+      SplashScreen.hideAsync().catch(() => { });
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primary.main }}>
+        <ActivityIndicator size="large" color="white" />
+      </View>
+    );
+  }
+
+  const RootView = GestureHandlerRootView; // Swipeable을 위해 필수
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <NavigationContainer>
-          <StatusBar style="light" />
-          <Stack.Navigator
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: colors.primary.main,
-              },
-              headerTintColor: colors.neutral.white,
-              headerTitleStyle: {
-                fontWeight: 'bold',
-              },
-            }}
-          >
-            <Stack.Screen
-              name="Main"
-              component={TabNavigator}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Detail"
-              component={DetailScreen}
-              options={{ title: '取引詳細' }}
-            />
-            <Stack.Screen
-              name="Edit"
-              component={EditScreen}
-              options={{ title: '取引を編集' }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <RootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <NavigationContainer>
+            <StatusBar style="light" />
+            <Stack.Navigator
+              screenOptions={({ navigation }) => ({
+                headerStyle: { backgroundColor: colors.primary.main },
+                headerTintColor: colors.neutral.white,
+                headerTitleStyle: { fontWeight: 'bold' },
+                headerBackTitleVisible: false,
+                headerLeft: (props) => {
+                  if (props.canGoBack) {
+                    return (
+                      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
+                        <Ionicons name="arrow-back" size={24} color={colors.neutral.white} />
+                      </TouchableOpacity>
+                    );
+                  }
+                  return null;
+                },
+              })}
+            >
+              <Stack.Screen
+                name="Main"
+                component={TabNavigator}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Detail"
+                component={DetailScreen}
+                options={{ title: '取引詳細' }}
+              />
+              <Stack.Screen
+                name="Edit"
+                component={EditScreen}
+                options={{ title: '取引を編集' }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </RootView>
+    </ErrorBoundary>
   );
 }
