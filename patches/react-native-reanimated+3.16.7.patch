@@ -21,7 +21,7 @@ index 112f758..faeebca 100644
      }
    }
 diff --git a/node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/BorderRadiiDrawableUtils/latest/com/swmansion/reanimated/BorderRadiiDrawableUtils.java b/node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/BorderRadiiDrawableUtils/latest/com/swmansion/reanimated/BorderRadiiDrawableUtils.java
-index c850777..4577e26 100644
+index c850777..8af7c09 100644
 --- a/node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/BorderRadiiDrawableUtils/latest/com/swmansion/reanimated/BorderRadiiDrawableUtils.java
 +++ b/node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/BorderRadiiDrawableUtils/latest/com/swmansion/reanimated/BorderRadiiDrawableUtils.java
 @@ -18,7 +18,7 @@ public class BorderRadiiDrawableUtils {
@@ -29,7 +29,7 @@ index c850777..4577e26 100644
      }
      Rect bounds = view.getBackground().getBounds();
 -    return length.resolve(bounds.width(), bounds.height()).toPixelFromDIP().getHorizontal();
-+    return length.resolve((float) bounds.width()).toPixelFromDIP().getHorizontal();
++    return length.resolve((float) bounds.width());
    }
  
    public static ReactNativeUtils.BorderRadii getBorderRadii(View view) {

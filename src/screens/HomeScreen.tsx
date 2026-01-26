@@ -9,17 +9,20 @@ import {
     Text,
     StyleSheet,
     ScrollView,
-    TouchableOpacity,
     RefreshControl,
     ActivityIndicator,
     Alert,
+    TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useFocusEffect } from '@react-navigation/native';
-import { Swipeable } from 'react-native-gesture-handler';
 import { colors, spacing, borderRadius, shadows, typography, formatCurrency, getDDay } from '../styles/theme';
 import { getDashboardSummary, markTransactionComplete } from '../services/database';
-import { cancelTransactionReminders } from '../services/notifications';
+import { cancelTransactionReminders, checkRemindersOnAppLoad, sendWebNotification } from '../services/notifications';
+import { ReminderBanner } from '../components/ReminderBanner';
+import { CustomAlertModal } from '../components/CustomAlertModal';
+import { Transaction, DashboardSummary } from '../types';
 
 // ...
 
@@ -36,12 +39,42 @@ export default function HomeScreen() {
     const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [dueTodayCount, setDueTodayCount] = useState(0);
+    const [bannerVisible, setBannerVisible] = useState(true);
+
+    // Custom Alert State (MOVED UP to fix Error #310)
+    const [alertConfig, setAlertConfig] = useState<{
+        visible: boolean;
+        title: string;
+        message?: string;
+        buttons: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[];
+    }>({ visible: false, title: '', buttons: [] });
+
+    const showAlert = (title: string, message: string, buttons: any[] = []) => {
+        setAlertConfig({ visible: true, title, message, buttons });
+    };
+
+    const closeAlert = () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+    };
 
     // 🔥 Firestore에서 거래 데이터 로드
     const loadData = useCallback(async () => {
         try {
             const data = await getDashboardSummary();
             setSummary(data);
+
+            // 오늘 마감인 항목 체크
+            const todayStr = new Date().toISOString().split('T')[0];
+            const dueCount = data.upcomingTransactions.filter(t => t.dueDate === todayStr).length;
+            setDueTodayCount(dueCount);
+
+            if (dueCount > 0) {
+                // 웹 알림 권한 요청 및 시스템 알림
+                await checkRemindersOnAppLoad();
+                sendWebNotification('カシモ', `今日が期限の取引が${dueCount}件あります`);
+            }
+
             console.log('✅ Dashboard loaded:', data);
         } catch (error) {
             console.error('❌ Failed to load dashboard:', error);
@@ -73,14 +106,15 @@ export default function HomeScreen() {
     }
 
     const handleSwipeComplete = async (transaction: Transaction) => {
-        Alert.alert(
+        showAlert(
             '精算完了',
             `${transaction.counterparty}さんとの取引を精算済みにしますか？`,
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
                 {
                     text: '完了にする',
                     onPress: async () => {
+                        closeAlert();
                         try {
                             await markTransactionComplete(transaction.id);
                             await cancelTransactionReminders(transaction.id);
@@ -89,7 +123,12 @@ export default function HomeScreen() {
                                 ...prev,
                                 upcomingTransactions: prev.upcomingTransactions.filter(t => t.id !== transaction.id)
                             }));
-                            Alert.alert('完了', '精算完了しました');
+
+                            // 성공 팝업
+                            setTimeout(() => {
+                                showAlert('成功', '精算完了しました', [{ text: '確認', onPress: closeAlert }]);
+                            }, 300);
+
                             loadData(); // 데이터 최신화
                         } catch (error) {
                             Alert.alert('エラー', '処理に失敗しました');
@@ -119,6 +158,18 @@ export default function HomeScreen() {
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
         >
+            {/* 리마인더 배너 (오늘 마감) */}
+            {bannerVisible && dueTodayCount > 0 && (
+                <ReminderBanner
+                    count={dueTodayCount}
+                    onPress={() => {
+                        // 스크롤 내려서 보여주거나 필터링 (여기선 일단 닫기)
+                        setBannerVisible(false);
+                    }}
+                    onClose={() => setBannerVisible(false)}
+                />
+            )}
+
             {/* 요약 카드들 */}
             <View style={styles.summaryContainer}>
                 {/* 받을 돈 카드 */}
@@ -157,7 +208,9 @@ export default function HomeScreen() {
                     summary.upcomingTransactions.map((item) => (
                         <Swipeable
                             key={item.id}
-                            renderRightActions={(p, d) => renderRightActions(p, d, item)}
+                            renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
+                            friction={2}
+                            rightThreshold={40}
                         >
                             <View style={styles.transactionItem}>
                                 <View style={styles.transactionLeft}>
@@ -183,7 +236,15 @@ export default function HomeScreen() {
                     ))
                 )}
             </View>
-        </ScrollView>
+
+            <CustomAlertModal
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                onDismiss={closeAlert}
+            />
+        </ScrollView >
     );
 }
 

@@ -1,0 +1,196 @@
+import * as SQLite from 'expo-sqlite';
+import * as Crypto from 'expo-crypto';
+import { DatabaseAdapter } from './adapter';
+import { Transaction, CreateTransactionInput, TransactionStatus, DashboardSummary } from '../../types';
+
+export class NativeSQLiteAdapter implements DatabaseAdapter {
+    private db: SQLite.SQLiteDatabase | null = null;
+
+    async init(): Promise<void> {
+        try {
+            this.db = await SQLite.openDatabaseAsync('kashimo.db');
+            await this.db.execAsync(`
+                PRAGMA journal_mode = WAL;
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    amount REAL NOT NULL,
+                    type TEXT NOT NULL,
+                    counterparty TEXT NOT NULL,
+                    dueDate TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    memo TEXT,
+                    createdAt TEXT NOT NULL,
+                    completedAt TEXT
+                );
+            `);
+            console.log('✅ [Native] Local Database initialized');
+        } catch (error) {
+            console.error('❌ Failed to init native database:', error);
+            throw error;
+        }
+    }
+
+    private getDb(): SQLite.SQLiteDatabase {
+        if (!this.db) {
+            throw new Error('Database not initialized. Call init() first.');
+        }
+        return this.db;
+    }
+
+    async addTransaction(input: CreateTransactionInput): Promise<Transaction> {
+        const db = this.getDb();
+        const id = Crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        const status: TransactionStatus = 'pending';
+
+        await db.runAsync(
+            `INSERT INTO transactions (id, amount, type, counterparty, dueDate, status, memo, createdAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [id, input.amount, input.type, input.counterparty, input.dueDate, status, input.memo || null, createdAt]
+        );
+
+        return {
+            id,
+            ...input,
+            status,
+            createdAt,
+            userId: 'local-user',
+            reminders: []
+        };
+    }
+
+    async getAllTransactions(): Promise<Transaction[]> {
+        const db = this.getDb();
+        const result = await db.getAllAsync<Transaction>(
+            `SELECT * FROM transactions ORDER BY dueDate ASC`
+        );
+        return result.map(row => ({ ...row, userId: 'local-user', reminders: [] }));
+    }
+
+    async getTransaction(id: string): Promise<Transaction | null> {
+        const db = this.getDb();
+        const result = await db.getFirstAsync<Transaction>(
+            `SELECT * FROM transactions WHERE id = ?`,
+            [id]
+        );
+        if (!result) return null;
+        return { ...result, userId: 'local-user', reminders: [] };
+    }
+
+    async getPendingTransactions(): Promise<Transaction[]> {
+        const db = this.getDb();
+        const result = await db.getAllAsync<Transaction>(
+            `SELECT * FROM transactions WHERE status = 'pending' ORDER BY dueDate ASC`
+        );
+        return result.map(row => ({ ...row, userId: 'local-user', reminders: [] }));
+    }
+
+    async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
+        const db = this.getDb();
+        const fields = Object.keys(updates).filter(key => key !== 'id' && key !== 'userId' && key !== 'createdAt');
+        if (fields.length === 0) return;
+
+        const setClause = fields.map(field => `${field} = ?`).join(', ');
+        const values = fields.map(key => (updates as any)[key]);
+
+        await db.runAsync(
+            `UPDATE transactions SET ${setClause} WHERE id = ?`,
+            [...values, id]
+        );
+    }
+
+    async removeTransaction(id: string): Promise<void> {
+        const db = this.getDb();
+        await db.runAsync('DELETE FROM transactions WHERE id = ?', [id]);
+    }
+
+    async markTransactionComplete(id: string): Promise<void> {
+        const db = this.getDb();
+        const completedAt = new Date().toISOString();
+        await db.runAsync(
+            `UPDATE transactions SET status = 'completed', completedAt = ? WHERE id = ?`,
+            [completedAt, id]
+        );
+    }
+
+    async revertTransactionStatus(id: string): Promise<void> {
+        const db = this.getDb();
+        await db.runAsync(
+            `UPDATE transactions SET status = 'pending', completedAt = NULL WHERE id = ?`,
+            [id]
+        );
+    }
+
+    async getDashboardSummary(): Promise<DashboardSummary> {
+        const db = this.getDb();
+
+        const result = await db.getAllAsync<{ type: string; total: number; count: number }>(
+            `SELECT type, SUM(amount) as total, COUNT(*) as count 
+             FROM transactions 
+             WHERE status = 'pending' 
+             GROUP BY type`
+        );
+
+        let totalToReceive = 0;
+        let totalToPay = 0;
+        let receiveCount = 0;
+        let payCount = 0;
+
+        result.forEach(row => {
+            if (row.type === 'lent') {
+                totalToReceive = row.total || 0;
+                receiveCount = row.count || 0;
+            } else {
+                totalToPay = row.total || 0;
+                payCount = row.count || 0;
+            }
+        });
+
+        const today = new Date();
+        const nextWeek = new Date();
+        nextWeek.setDate(today.getDate() + 7);
+
+        const todayStr = today.toISOString().split('T')[0];
+        const nextWeekStr = nextWeek.toISOString().split('T')[0];
+
+        const upcoming = await db.getAllAsync<Transaction>(
+            `SELECT * FROM transactions 
+             WHERE status = 'pending' 
+             AND dueDate >= ? 
+             AND dueDate <= ?
+             ORDER BY dueDate ASC`,
+            [todayStr, nextWeekStr]
+        );
+
+        return {
+            totalToReceive,
+            totalToPay,
+            receiveCount,
+            payCount,
+            upcomingTransactions: upcoming.map(row => ({ ...row, userId: 'local-user', reminders: [] })),
+        };
+    }
+
+    async replaceAllTransactions(transactions: Transaction[]): Promise<void> {
+        const db = this.getDb();
+
+        // Use withTransactionAsync for atomicity if available, or just sequential await
+        // Expo SQLite next usually supports exclusive execution
+        try {
+            await db.runAsync('BEGIN TRANSACTION');
+            await db.runAsync('DELETE FROM transactions');
+
+            for (const t of transactions) {
+                await db.runAsync(
+                    `INSERT INTO transactions (id, amount, type, counterparty, dueDate, status, memo, createdAt, completedAt)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [t.id, t.amount, t.type, t.counterparty, t.dueDate, t.status, t.memo || null, t.createdAt, t.completedAt || null]
+                );
+            }
+            await db.runAsync('COMMIT');
+        } catch (e) {
+            await db.runAsync('ROLLBACK');
+            throw e;
+        }
+    }
+}

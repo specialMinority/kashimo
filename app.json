@@ -28,7 +28,18 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png",
+      "display": "standalone",
+      "backgroundColor": "#4ECDC4",
+      "themeColor": "#4ECDC4",
+      "description": "Kashimo - P2P Finance Manager for Friends",
+      "startUrl": "/",
+      "meta": {
+        "apple": {
+          "mobile-web-app-capable": "yes",
+          "mobile-web-app-status-bar-style": "black-translucent"
+        }
+      }
     },
     "plugins": [
       "expo-font",

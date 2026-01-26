@@ -11,8 +11,8 @@
 | 항목 | 값 |
 |------|-----|
 | **프로젝트명** | Kashimo (カシモ) |
-| **상태** | `✅ 개발 완료 - Phase 2 (Local Migration)` |
-| **마지막 업데이트** | 2026-01-25 12:55 KST |
+| **상태** | `✅ 개발 완료 - Phase 2 (Local Migration) & Verified` |
+| **마지막 업데이트** | 2026-01-26 02:30 KST |
 | **프로젝트 경로** | `c:\Users\PC\.gemini\antigravity\scratch\kashimo` |
 | **기획서 경로** | `C:\Users\PC\.gemini\antigravity\brain\b215a033-abf2-4ea5-80f3-7eb01deabf38\implementation_plan.md` |
 
@@ -21,18 +21,19 @@
 ## 1. 🎯 최상위 목표 (High-Level Goal)
 
 ### 한 문장 설명
-> **일본 시장을 타겟으로 한 개인 간 금전거래(빌려준 돈/빌린 돈) 관리 앱. 기록은 10초, 알림은 자동, 데이터는 내 폰에 안전하게.**
+> **일본 시장을 타겟으로 한 개인 간 금전거래(빌려준 돈/빌린 돈) 관리 앱.**
+> **Android는 앱으로, iOS는 웹(PWA)으로. 어디서든 내 데이터는 안전하게.**
 
 ### 핵심 차별점
+- ✅ **Hybrid 전략 (Native Android + Web PWA)**
 - ✅ **완전한 프라이버시 (로컬 저장소 사용)**
 - ✅ 상대방 앱 설치 불필요 (나만 기록)
 - ✅ 단계별 자동 알림 (D-7, D-3, D-1, D-Day)
-- ✅ 인터넷 없이도 완벽한 사용성
-- ✅ 심플한 UI (가계부 기능 없음)
 
 ### 완료 조건 (Definition of Done)
-- [ ] iOS/Android 앱 스토어 출시
-- [x] 거래 CRUD 기능 동작 (SQLite)
+- [ ] Android 앱 스토어 출시
+- [x] iOS용 웹(PWA) 배포 완료
+- [x] 거래 CRUD 기능 동작 (SQLite/WebStorage)
 - [x] 로컬 푸시 알림 동작
 - [x] 데이터 백업/복구 (JSON 파일)
 - [ ] 프리미엄 결제 기능 동작
@@ -70,21 +71,19 @@
 
 ### ✅ 마지막 완료된 액션
 ```
-[2026-01-25 14:10] Phase 2 마무리 및 GitHub 연동 완료
-1. **GitHub 리포지토리 생성**: `specialMinority/kashimo` 생성 및 코드 푸시 완료
-2. **백업 기능 핫픽스**:
-    - Android/Expo Go 환경에서 `expo-file-system` 모듈 로딩 문제 해결 (`require` 방식 적용)
-    - 백업 파일 생성 및 공유 기능 안정화
-3. **최종 Preview 빌드 생성**:
-    - 백업 기능 수정사항이 반영된 최신 APK 빌드 요청
+[2026-01-26 23:45] Phase 3.5 마무리 및 웹 UI 최적화 완료
+1. **React Error #310 해결**: HomeScreen의 Hook 호출 순서 위반 문제를 수정하여 화이트 스크린 크래시 해결.
+2. **웹 레이아웃 최적화**: 모바일 브라우저에서 하단 탭 바가 잘리는 현상을 해결 (높이 85px, 패딩 15px로 조정).
+3. **기능 복구**: GestureHandlerRootView 설정을 통해 웹용 스와이프(Swipeable) 기능 정상화.
+4. **런타임 안정성**: ErrorBoundary를 도입하여 앱 예외 발생 시 피드백 제공.
 ```
 
 ### ⏭️ 다음 단계 (When Resumed)
 ```
-Phase 3: 앱 고도화 및 검증
-1. [ ] 백업/복구 기능 실기기 테스트 (최신 APK 사용)
-2. [ ] 대량 데이터 스트레스 테스트
-3. [ ] 스토어 출시 준비 (스크린샷, 개인정보처리방침)
+Phase 3: Web Support (iOS Alternative)
+1. [x] DB 로직 리팩토링 (Native vs Web 분기 처리)
+2. [x] Web용 저장소 어댑터 (localStorage/IndexedDB) 구현
+3. [x] PWA 배포 (Netlify) 및 iPhone 홈 화면 추가 테스트
 ```
 
 ---
@@ -210,6 +209,11 @@ Phase 3: 앱 고도화 및 검증
 | 2026-01-25 | JSON 백업 | 클라우드 계정 연동 없이도 가장 직관적이고 이식성 높은 데이터 보존 방식 |
 | 2026-01-24 | Expo 사용 | iOS/Android 동시 개발, OTA 업데이트, 빠른 개발 |
 | 2026-01-24 | TypeScript 필수 | 타입 안정성, 리팩토링 용이, 협업 시 실수 방지 |
+| 2026-01-26 | **Expo FileSystem Legacy** | `expo-file-system` v19+에서는 `StorageAccessFramework`가 `expo-file-system/legacy`로 분리됨. `import *` 사용 시 네임스페이스 로딩 실패 이슈 발생하여 **명시적 import** 사용 필수. |
+| 2026-01-26 | **EAS Build Limit** | Free Plan의 Android 빌드 한도 도달. 로컬 빌드 환경(Android Studio)이 없다면 Expo Go로 검증해야 함. |
+| 2026-01-26 | **Pivot to Web (iOS)** | iOS 앱 심사 및 배포 비용($99) 대비 효율성을 위해 iOS는 PWA(웹)로 전환. Android는 Native 유지. |
+217: | 2026-01-26 | **React Hook Rules** | `if (loading)` 문 뒤에 `useState`를 두어 Error #310 발생. 모든 Hook은 조건문 없이 최상단에 배치해야 함을 확인. |
+218: | 2026-01-26 | **Web Layout Gap** | 모바일 웹 브라우저의 하단바 영역으로 인해 Bottom Tab이 짤림. 85px 이상의 높이와 적절한 패딩 분배가 필요함. |
 
 ### 일본 시장 인사이트
 | 날짜 | 정보 |
@@ -298,6 +302,14 @@ kashimo/
   - Firebase 관련 코드 완전 삭제
 - **결과**: 앱 사이즈 감소, 속도 향상, 완전한 오프라인 동작 달성
 
+#### [2026-01-26] Phase 2 검증 및 핫픽스 (Android) ✅
+- **작업자**: AI Assistant
+- **이슈 해결**:
+  1.  **빌드 에러**: React Native 0.81 + Reanimated v3 호환성 문제 -> `patch-package`로 자바 코드(`BorderRadiiDrawableUtils.java`) 수정하여 해결.
+  2.  **런타임 에러**: `FileSystem.StorageAccessFramework is undefined` -> `expo-file-system/legacy`에서 명시적 import 구문으로 변경하여 해결 (`import { StorageAccessFramework } ...`).
+  3.  **빌드 한도**: EAS Build 한도 초과 -> **Expo Go** 개발 서버(`npx expo start`)를 통해 기능 검증 완료.
+- **결과**: 백업/복구 기능의 Android 폴더 선택(SAF)이 정상 동작함을 확인.
+
 #### 12:35 - UX 개선 및 제스처 기능 추가
 - **작업자**: AI Assistant
 - **작업 내용**:
@@ -338,6 +350,35 @@ kashimo/
   - 테스트: 홈 화면에서 ¥10,000 표시 확인
 - **결과**: 앱이 실제 Firebase와 연동되어 데이터 저장/조회 가능
 
+#### 2. Project Status
+- **Phase 1 (MVP)**: Completed (UI, Basic Logic).
+- **Phase 2 (Local DB)**: Completed (SQLite Migration, Backup).
+- **Phase 3 (Web Support)**: Completed (PWA, Web Adapters, Deployment).
+- **Phase 3.5 (Enhancements)**: Completed (Web Polish, Notifications, deployment fixes).
+- **Current Focus**: Phase 4 (Store Release).
+
+## 3. Tech Stack
+- **Framework**: React Native (Expo).
+- **Database**:
+    - Mobile: `expo-sqlite` (Local).
+    - Web: `localStorage` / `IndexedDB` (Adapter Pattern).
+- **Navigation**: React Navigation v7 (Native Stack + Bottom Tabs).
+- **Styling**: Standard StyleSheet (Theme System).
+- **Icons**: Ionicons (@expo/vector-icons) with CDN fallback for Web.
+- **Deployment**: Netlify (Web), EAS Build (Android).
+
+## 4. Recent Changes (Phase 3 & 3.5)
+- **Web Compatibility**:
+    - Implemented `WebDatabase` adapter for seamless cross-platform logic.
+    - Added `CustomAlertModal` to replace native alerts on Web.
+    - Fixed font loading issues (Infinite loading, missing icons) using safe loading + CDN patch.
+    - Forced visible Back Button on Web headers.
+- **Deployment**:
+    - Successfully deployed PWA to Netlify.
+    - Configured `app.json` for proper Web Favicon and Metadata.
+- **Features**:
+    - Notification system with Reminder toggles.
+    - Backup/Restore functionality (JSON file-based).
 #### 15:55 - Phase 1 Week 2 & Week 3 완료 ✅ 🎉
 - **작업자**: AI Assistant
 - **작업 내용**:

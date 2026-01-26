@@ -21,6 +21,10 @@ import { TransactionType, CreateTransactionInput } from '../types';
 import { TRANSACTION_TYPE_LABELS } from '../constants';
 import { addTransaction } from '../services/database';
 import { scheduleTransactionReminders } from '../services/notifications';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootTabParamList } from '../navigation/TabNavigator';
+import { CustomAlertModal } from '../components/CustomAlertModal';
 
 export default function AddScreen() {
     const [counterparty, setCounterparty] = useState('');
@@ -30,18 +34,37 @@ export default function AddScreen() {
     const [memo, setMemo] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Navigation
+    const navigation = useNavigation<NativeStackNavigationProp<RootTabParamList>>();
+
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState<{
+        visible: boolean;
+        title: string;
+        message?: string;
+        buttons: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[];
+    }>({ visible: false, title: '', buttons: [] });
+
+    const showAlert = (title: string, message: string, buttons: any[] = [{ text: 'OK', onPress: closeAlert }]) => {
+        setAlertConfig({ visible: true, title, message, buttons });
+    };
+
+    const closeAlert = () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+    };
+
     const handleSubmit = async () => {
         // 유효성 검사
         if (!counterparty.trim()) {
-            Alert.alert('エラー', '相手の名前を入力してください');
+            showAlert('エラー', '相手の名前を入力してください');
             return;
         }
         if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-            Alert.alert('エラー', '金額を正しく入力してください');
+            showAlert('エラー', '金額を正しく入力してください');
             return;
         }
         if (!dueDate) {
-            Alert.alert('エラー', '返済期限を入力してください');
+            showAlert('エラー', '返済期限を入力してください');
             return;
         }
 
@@ -54,7 +77,7 @@ export default function AddScreen() {
         // 날짜 형식 검증 (YYYY-MM-DD)
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         if (!dateRegex.test(formattedDate)) {
-            Alert.alert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
+            showAlert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
             return;
         }
 
@@ -83,25 +106,28 @@ export default function AddScreen() {
             );
             console.log('🔔 Notifications scheduled:', scheduledIds.length, '개');
 
-            Alert.alert(
+            showAlert(
                 '完了',
                 `取引を登録しました！\n${scheduledIds.length > 0 ? `リマインダー ${scheduledIds.length}件を設定しました。` : ''}`,
                 [
                     {
-                        text: 'OK',
+                        text: '確認',
                         onPress: () => {
+                            closeAlert();
                             // 폼 초기화
                             setCounterparty('');
                             setAmount('');
                             setType('lent');
                             setDueDate('');
                             setMemo('');
+                            // 🚀 리스트 화면으로 이동
+                            navigation.navigate('List');
                         },
                     },
                 ]
             );
         } catch (error) {
-            Alert.alert('エラー', '登録に失敗しました。\n' + String(error));
+            showAlert('エラー', '登録に失敗しました。\n' + String(error));
             console.error('❌ Save error:', error);
         } finally {
             setIsSubmitting(false);
@@ -235,6 +261,13 @@ export default function AddScreen() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+            <CustomAlertModal
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                onDismiss={closeAlert}
+            />
         </KeyboardAvoidingView>
     );
 }

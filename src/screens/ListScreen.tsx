@@ -9,20 +9,21 @@ import {
     Text,
     StyleSheet,
     FlatList,
-    TouchableOpacity,
-    RefreshControl,
     ActivityIndicator,
     Alert,
+    RefreshControl,
+    TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Swipeable } from 'react-native-gesture-handler';
 import { colors, spacing, borderRadius, shadows, typography, formatCurrency, getDDay } from '../styles/theme';
 import { Transaction, TransactionType } from '../types';
 import { TRANSACTION_STATUS_LABELS, TRANSACTION_TYPE_LABELS } from '../constants';
-import { getAllTransactions, removeTransaction, revertTransactionStatus } from '../services/database';
+import { getAllTransactions, removeTransaction, revertTransactionStatus, updateTransaction } from '../services/database';
 import { cancelTransactionReminders } from '../services/notifications';
+import { CustomAlertModal } from '../components/CustomAlertModal';
 
 // 네비게이션 타입
 type RootStackParamList = {
@@ -71,6 +72,22 @@ export default function ListScreen() {
         setRefreshing(false);
     };
 
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState<{
+        visible: boolean;
+        title: string;
+        message?: string;
+        buttons: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[];
+    }>({ visible: false, title: '', buttons: [] });
+
+    const showAlert = (title: string, message: string, buttons: any[]) => {
+        setAlertConfig({ visible: true, title, message, buttons });
+    };
+
+    const closeAlert = () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+    };
+
     // 거래 클릭 시 상세 화면으로 이동
     const handleTransactionPress = (transactionId: string) => {
         navigation.navigate('Detail', { transactionId });
@@ -78,23 +95,24 @@ export default function ListScreen() {
 
     // 거래 삭제 처리
     const handleDelete = async (transaction: Transaction) => {
-        Alert.alert(
+        showAlert(
             '削除確認',
             'この取引を削除しますか？\nこの操作は取り消せません。',
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
                 {
                     text: '削除する',
                     style: 'destructive',
                     onPress: async () => {
+                        closeAlert();
                         try {
                             await cancelTransactionReminders(transaction.id);
                             await removeTransaction(transaction.id);
                             // 목록에서 제거
                             setTransactions(prev => prev.filter(t => t.id !== transaction.id));
-                            Alert.alert('完了', '取引を削除しました');
+                            // Alert.alert('完了', '取引を削除しました');
                         } catch (error) {
-                            Alert.alert('エラー', '削除に失敗しました');
+                            console.error(error);
                         }
                     }
                 }
@@ -104,21 +122,54 @@ export default function ListScreen() {
 
     // 거래 정산 취소 처리
     const handleRevert = async (transaction: Transaction) => {
-        Alert.alert(
+        showAlert(
             '精算取消',
             '未精算状態に戻しますか？',
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
                 {
                     text: '戻す',
                     onPress: async () => {
+                        closeAlert();
                         try {
                             await revertTransactionStatus(transaction.id);
                             // 목록 업데이트 (낙관적 or reload)
                             await loadData();
-                            Alert.alert('完了', '未精算状態に戻しました');
+                            // Alert.alert('完了', '未精算状態に戻しました');
                         } catch (error) {
-                            Alert.alert('エラー', '処理に失敗しました');
+                            console.error(error);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    // 거래 완료 처리
+    const handleComplete = async (transaction: Transaction) => {
+        showAlert(
+            '完了確認',
+            'この取引を完了済み(返済済み)にしますか？',
+            [
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
+                {
+                    text: '完了にする',
+                    onPress: async () => {
+                        closeAlert();
+                        try {
+                            await updateTransaction(transaction.id, { status: 'completed' });
+                            await cancelTransactionReminders(transaction.id);
+
+                            // 목록 업데이트
+                            await loadData();
+
+                            // 🚀 완료 팝업 표시
+                            setTimeout(() => {
+                                showAlert('成功', '取引を完了済みにしました！', [{ text: '確認', onPress: closeAlert }]);
+                            }, 300);
+                        } catch (error) {
+                            console.error(error);
+                            showAlert('エラー', '処理に失敗しました', [{ text: 'OK', onPress: closeAlert }]);
                         }
                     }
                 }
@@ -131,7 +182,7 @@ export default function ListScreen() {
 
         if (isCompleted) {
             return (
-                <View style={styles.actionContainer}>
+                <View style={[styles.actionContainer, { width: 140 }]}>
                     <TouchableOpacity
                         style={[styles.actionButton, styles.revertAction]}
                         onPress={() => handleRevert(item)}
@@ -151,7 +202,14 @@ export default function ListScreen() {
         }
 
         return (
-            <View style={styles.actionContainer}>
+            <View style={[styles.actionContainer, { width: 210 }]}>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.completeAction]}
+                    onPress={() => handleComplete(item)}
+                >
+                    <Ionicons name="checkmark-circle-outline" size={24} color={colors.neutral.white} />
+                    <Text style={styles.actionText}>完了</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.actionButton, styles.editAction]}
                     onPress={() => navigation.navigate('Edit', { transactionId: item.id } as any)}
@@ -176,8 +234,10 @@ export default function ListScreen() {
 
         return (
             <Swipeable
-                renderRightActions={(p, d) => renderRightActions(p, d, item)}
-                containerStyle={styles.swipeableContainer}
+                key={item.id}
+                renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
+                friction={2}
+                rightThreshold={40}
             >
                 <TouchableOpacity
                     style={[
@@ -241,6 +301,7 @@ export default function ListScreen() {
                 </TouchableOpacity>
             </Swipeable>
         );
+
     };
 
     return (
@@ -288,6 +349,13 @@ export default function ListScreen() {
                         <Text style={styles.emptyText}>取引がありません</Text>
                     </View>
                 }
+            />
+            <CustomAlertModal
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                onDismiss={closeAlert}
             />
         </View>
     );
@@ -392,7 +460,7 @@ const styles = StyleSheet.create({
     dDayBadge: {
         paddingHorizontal: spacing.sm,
         paddingVertical: spacing.xs,
-        borderRadius: borderRadius.full,
+        borderRadius: borderRadius.round,
         marginTop: spacing.xs,
     },
     dDayText: {
@@ -403,7 +471,7 @@ const styles = StyleSheet.create({
     statusBadge: {
         paddingHorizontal: spacing.sm,
         paddingVertical: spacing.xs,
-        borderRadius: borderRadius.full,
+        borderRadius: borderRadius.round,
         marginTop: spacing.xs,
     },
     statusText: {
@@ -433,6 +501,9 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    completeAction: {
+        backgroundColor: colors.semantic.success,
     },
     editAction: {
         backgroundColor: colors.primary.main,

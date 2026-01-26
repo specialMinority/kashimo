@@ -21,6 +21,7 @@ import { Transaction } from '../types';
 import { TRANSACTION_TYPE_LABELS, TRANSACTION_STATUS_LABELS } from '../constants';
 import { getTransaction, removeTransaction, markTransactionComplete, revertTransactionStatus } from '../services/database';
 import { cancelTransactionReminders, scheduleTransactionReminders } from '../services/notifications';
+import { CustomAlertModal } from '../components/CustomAlertModal';
 
 // 네비게이션 타입
 type RootStackParamList = {
@@ -58,25 +59,41 @@ export default function DetailScreen() {
         loadTransaction();
     }, [loadTransaction]);
 
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState<{
+        visible: boolean;
+        title: string;
+        message?: string;
+        buttons: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[];
+    }>({ visible: false, title: '', buttons: [] });
+
+    const showAlert = (title: string, message: string, buttons: any[]) => {
+        setAlertConfig({ visible: true, title, message, buttons });
+    };
+
+    const closeAlert = () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+    };
+
     // 정산 완료 처리
     const handleComplete = async () => {
-        Alert.alert(
+        showAlert(
             '精算完了',
             'この取引を精算済みにしますか？',
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
                 {
                     text: '完了にする',
                     onPress: async () => {
+                        closeAlert();
                         setActionLoading(true);
                         try {
                             await markTransactionComplete(transactionId);
                             // 🔔 정산 완료 시 남은 알림 취소
                             await cancelTransactionReminders(transactionId);
-                            Alert.alert('完了', '精算完了しました');
+                            // Alert.alert('完了', '精算完了しました'); // Keep simple alert for success or use Toast later
                             navigation.goBack();
                         } catch (error) {
-                            Alert.alert('エラー', '処理に失敗しました');
                             console.error(error);
                         } finally {
                             setActionLoading(false);
@@ -89,24 +106,24 @@ export default function DetailScreen() {
 
     // 거래 삭제 처리
     const handleDelete = () => {
-        Alert.alert(
+        showAlert(
             '削除確認',
             'この取引を削除しますか？\nこの操作は取り消せません。',
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
                 {
                     text: '削除する',
                     style: 'destructive',
                     onPress: async () => {
+                        closeAlert();
                         setActionLoading(true);
                         try {
                             // 🔔 삭제 시 관련 알림 취소
                             await cancelTransactionReminders(transactionId);
                             await removeTransaction(transactionId);
-                            Alert.alert('完了', '取引を削除しました');
                             navigation.goBack();
                         } catch (error) {
-                            Alert.alert('エラー', '削除に失敗しました');
+                            console.error(error);
                         } finally {
                             setActionLoading(false);
                         }
@@ -146,22 +163,20 @@ export default function DetailScreen() {
 
     // 정산 취소 처리 (미완료로 되돌리기)
     const handleRevert = async () => {
-        Alert.alert(
+        showAlert(
             '精算取消',
             '未精算状態に戻しますか？',
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
                 {
                     text: '戻す',
                     onPress: async () => {
+                        closeAlert();
                         setActionLoading(true);
                         try {
                             await revertTransactionStatus(transactionId);
-                            // 🔔 다시 알림 스케줄링 (선택 사항)
-                            Alert.alert('完了', '未精算状態に戻しました');
                             navigation.goBack();
                         } catch (error) {
-                            Alert.alert('エラー', '処理に失敗しました');
                             console.error(error);
                         } finally {
                             setActionLoading(false);
@@ -309,6 +324,14 @@ export default function DetailScreen() {
                     <Text style={styles.actionButtonText}>削除</Text>
                 </TouchableOpacity>
             </View>
+
+            <CustomAlertModal
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                onDismiss={closeAlert}
+            />
         </ScrollView>
     );
 }
@@ -385,7 +408,7 @@ const styles = StyleSheet.create({
         gap: spacing.xs,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
-        borderRadius: borderRadius.full,
+        borderRadius: borderRadius.round,
     },
     typeText: {
         color: colors.neutral.white,
