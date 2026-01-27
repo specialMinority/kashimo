@@ -106,33 +106,40 @@ export class WebLocalStorageAdapter implements DatabaseAdapter {
         const transactions = this.getStoredTransactions();
         const pending = transactions.filter(t => t.status === 'pending');
 
+        console.log('📊 [getDashboardSummary] Total pending transactions:', pending.length);
+
         let totalToReceive = 0;
         let totalToPay = 0;
         let receiveCount = 0;
         let payCount = 0;
 
         pending.forEach(t => {
+            const amount = Number(t.amount); // Ensure numeric summation
             if (t.type === 'lent') {
-                totalToReceive += t.amount;
+                totalToReceive += amount;
                 receiveCount++;
             } else {
-                totalToPay += t.amount;
+                totalToPay += amount;
                 payCount++;
             }
         });
 
         // Upcoming: Due between today and next 7 days
-        const today = new Date();
-        const nextWeek = new Date();
-        nextWeek.setDate(today.getDate() + 7);
+        // Use Local Date for todayStr to match user perspective
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-        const todayStr = today.toISOString().split('T')[0];
-        const nextWeekStr = nextWeek.toISOString().split('T')[0];
+        const nextWeekDate = new Date();
+        nextWeekDate.setDate(now.getDate() + 7);
+        const nextWeekStr = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
 
-        // Filter: Pending AND Due >= Today AND Due <= NextWeek
+        console.log(`📊 [getDashboardSummary] Range: ${todayStr} ~ ${nextWeekStr}`);
+
         const upcoming = pending
             .filter(t => t.dueDate >= todayStr && t.dueDate <= nextWeekStr)
             .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+        console.log('📊 [getDashboardSummary] Upcoming count:', upcoming.length);
 
         return {
             totalToReceive,
@@ -144,6 +151,7 @@ export class WebLocalStorageAdapter implements DatabaseAdapter {
     }
 
     async replaceAllTransactions(transactions: Transaction[]): Promise<void> {
+        console.log('💾 [Web] replaceAllTransactions: Replacing with', transactions.length, 'items');
         this.saveStoredTransactions(transactions);
     }
 }

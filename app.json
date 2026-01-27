@@ -44,7 +44,8 @@
     "plugins": [
       "expo-font",
       "expo-sqlite",
-      "expo-file-system"
+      "expo-file-system",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false

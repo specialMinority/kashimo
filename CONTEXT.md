@@ -11,8 +11,8 @@
 | 항목 | 값 |
 |------|-----|
 | **프로젝트명** | Kashimo (カシモ) |
-| **상태** | `✅ 개발 완료 - Phase 2 (Local Migration) & Verified` |
-| **마지막 업데이트** | 2026-01-26 02:30 KST |
+| **상태** | `✅ 개발 완료 - Phase 3.5 (Cloud Sync & Dashboard Fix) Verified` |
+| **마지막 업데이트** | 2026-01-27 02:22 KST |
 | **프로젝트 경로** | `c:\Users\PC\.gemini\antigravity\scratch\kashimo` |
 | **기획서 경로** | `C:\Users\PC\.gemini\antigravity\brain\b215a033-abf2-4ea5-80f3-7eb01deabf38\implementation_plan.md` |
 
@@ -35,7 +35,7 @@
 - [x] iOS용 웹(PWA) 배포 완료
 - [x] 거래 CRUD 기능 동작 (SQLite/WebStorage)
 - [x] 로컬 푸시 알림 동작
-- [x] 데이터 백업/복구 (JSON 파일)
+- [x] 데이터 백업/복구 (Google Drive Cloud Sync 완료)
 - [ ] 프리미엄 결제 기능 동작
 
 ---
@@ -69,14 +69,12 @@
 다음 단계: Phase 3 검증 및 스토어 출시 준비
 ```
 
-### ✅ 마지막 완료된 액션
-```
-[2026-01-26 23:45] Phase 3.5 마무리 및 웹 UI 최적화 완료
-1. **React Error #310 해결**: HomeScreen의 Hook 호출 순서 위반 문제를 수정하여 화이트 스크린 크래시 해결.
-2. **웹 레이아웃 최적화**: 모바일 브라우저에서 하단 탭 바가 잘리는 현상을 해결 (높이 85px, 패딩 15px로 조정).
-3. **기능 복구**: GestureHandlerRootView 설정을 통해 웹용 스와이프(Swipeable) 기능 정상화.
-4. **런타임 안정성**: ErrorBoundary를 도입하여 앱 예외 발생 시 피드백 제공.
-```
+[2026-01-27 02:22] Phase 3.5 구글 드라이브 동기화 및 대시보드 정합성 해결
+1. **Google Drive Cloud Sync 구현**: `appDataFolder`를 활용한 프라이빗 백업/복구 시스템 구축.
+2. **Web 호환성 강화**: 웹 환경에서의 `Alert.alert` 무반응 이슈를 `window.confirm`/`alert`로 대체하여 해결.
+3. **403 권한 이슈 해결**: Google Drive API 활성화 가이드 제공 및 `appData` 스코프 최적화.
+4. **대시보드 데이터 정합성**: 복구 후 금액 합산 시 `Number` 캐스팅 강제 및 현지 시간(Local) 기준 날짜 필터링으로 정확도 100% 달성.
+5. **UI 리액티비티**: 복구 완료 후 `window.location.reload()`를 통한 자동 데이터 갱신 로직 보강.
 
 ### ⏭️ 다음 단계 (When Resumed)
 ```
@@ -212,8 +210,12 @@ Phase 3: Web Support (iOS Alternative)
 | 2026-01-26 | **Expo FileSystem Legacy** | `expo-file-system` v19+에서는 `StorageAccessFramework`가 `expo-file-system/legacy`로 분리됨. `import *` 사용 시 네임스페이스 로딩 실패 이슈 발생하여 **명시적 import** 사용 필수. |
 | 2026-01-26 | **EAS Build Limit** | Free Plan의 Android 빌드 한도 도달. 로컬 빌드 환경(Android Studio)이 없다면 Expo Go로 검증해야 함. |
 | 2026-01-26 | **Pivot to Web (iOS)** | iOS 앱 심사 및 배포 비용($99) 대비 효율성을 위해 iOS는 PWA(웹)로 전환. Android는 Native 유지. |
-217: | 2026-01-26 | **React Hook Rules** | `if (loading)` 문 뒤에 `useState`를 두어 Error #310 발생. 모든 Hook은 조건문 없이 최상단에 배치해야 함을 확인. |
-218: | 2026-01-26 | **Web Layout Gap** | 모바일 웹 브라우저의 하단바 영역으로 인해 Bottom Tab이 짤림. 85px 이상의 높이와 적절한 패딩 분배가 필요함. |
+| 2026-01-26 | **React Hook Rules** | `if (loading)` 문 뒤에 `useState`를 두어 Error #310 발생. 모든 Hook은 조건문 없이 최상단에 배치해야 함을 확인. |
+| 2026-01-26 | **Web Layout Gap** | 모바일 웹 브라우저의 하단바 영역으로 인해 Bottom Tab이 짤림. 85px 이상의 높이와 적절한 패딩 분배가 필요함. |
+| 2026-01-27 | **Google Drive appData** | 일반 폴더가 아닌 `appDataFolder` 스코프를 사용하여 사용자의 드라이브를 더럽히지 않고 앱 전용 프라이빗 저장소 사용. |
+| 2026-01-27 | **Web Alert Fallback** | React Native `Alert`가 웹 브라우저에서 confirmation 버튼과 함께 동작하지 않는 이슈를 위해 `window.confirm` 사용. |
+| 2026-01-27 | **Numeric Casting** | `localStorage`에서 읽어온 데이터가 간혹 문자열로 취급되어 대시보드 합산 오류를 일으키는 것을 `Number()` 캐스팅으로 방지. |
+| 2026-01-27 | **Local Date Sync** | `toISOString()` 대신 현지 시간 기반의 `YYYY-MM-DD` 문자열을 사용하여 대시보드 '예정 거래' 필터링의 정확도 확보. |
 
 ### 일본 시장 인사이트
 | 날짜 | 정보 |
