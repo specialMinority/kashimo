@@ -75,6 +75,11 @@ export default function HomeScreen() {
                 sendWebNotification('カシモ', `今日が期限の取引が${dueCount}件あります`);
             }
 
+            console.log('📊 [HomeScreen] loadData - Summary received:', {
+                totalToReceive: data.totalToReceive,
+                totalToPay: data.totalToPay,
+                upcomingCount: data.upcomingTransactions.length
+            });
             console.log('✅ Dashboard loaded:', data);
         } catch (error) {
             console.error('❌ Failed to load dashboard:', error);
