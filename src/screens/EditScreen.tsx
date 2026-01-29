@@ -59,7 +59,7 @@ export default function EditScreen() {
                 setCounterparty(data.counterparty);
                 setAmount(String(data.amount));
                 setType(data.type);
-                setDueDate(data.dueDate);
+                setDueDate(data.dueDate || '');
                 setMemo(data.memo || '');
             }
         } catch (error) {

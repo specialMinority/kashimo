@@ -158,7 +158,7 @@ export default function DetailScreen() {
     }
 
     const isCompleted = transaction.status === 'completed';
-    const isOverdue = !isCompleted && new Date(transaction.dueDate) < new Date();
+    const isOverdue = !isCompleted && transaction.dueDate && new Date(transaction.dueDate) < new Date();
     const isLent = transaction.type === 'lent';
 
     // 정산 취소 처리 (미완료로 되돌리기)
@@ -205,7 +205,7 @@ export default function DetailScreen() {
                 <Text style={styles.statusText}>
                     {isCompleted ? '✅ 精算済み' :
                         isOverdue ? '⚠️ 期限超過' :
-                            `📅 ${getDDay(new Date(transaction.dueDate))}`}
+                            transaction.dueDate ? `📅 ${getDDay(new Date(transaction.dueDate))}` : '📅 期限なし'}
                 </Text>
             </View>
 
@@ -242,11 +242,11 @@ export default function DetailScreen() {
                 <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>返済期限</Text>
                     <Text style={styles.detailValue}>
-                        {new Date(transaction.dueDate).toLocaleDateString('ja-JP', {
+                        {transaction.dueDate ? new Date(transaction.dueDate).toLocaleDateString('ja-JP', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
-                        })}
+                        }) : '設定なし'}
                     </Text>
                 </View>
 

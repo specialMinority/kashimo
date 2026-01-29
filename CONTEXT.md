@@ -32,10 +32,10 @@
 
 ### 완료 조건 (Definition of Done)
 - [ ] Android 앱 스토어 출시
-- [x] iOS용 웹(PWA) 배포 완료
+- [x] iOS용 웹(PWA) 배포 완료 (GitHub Pages: [link](https://specialminority.github.io/kashimo))
 - [x] 거래 CRUD 기능 동작 (SQLite/WebStorage)
 - [x] 로컬 푸시 알림 동작
-- [x] 데이터 백업/복구 (Google Drive Cloud Sync 완료)
+- [x] 데이터 백업/복구 (Web Google Drive Sync 검증 완료)
 - [ ] 프리미엄 결제 기능 동작
 
 ---
@@ -65,9 +65,16 @@
 
 ### 🔴 활성 태스크
 ```
-없음 - Phase 2 (Local Migration) & GitHub Version Control 완료! 🚀
-다음 단계: Phase 3 검증 및 스토어 출시 준비
+없음 - GitHub Pages 이전 및 웹 버그(아이콘, 구글 로그인) 해결 완료! 🚀
+다음 단계: Android Google API 연결 및 스토어 출시 준비
 ```
+
+[2026-01-28 02:10] Phase 3.6 GitHub Pages 이전 및 웹 최적화 (Verified)
+1. **Hosting Migration**: Netlify에서 GitHub Pages로 이전. 하위 경로(`/kashimo/`) 호환성을 위한 `baseUrl` 및 상대 경로(`./`) 설정 완료.
+2. **Icon Fix**: GitHub Pages의 CORS 정책 이슈를 해결하기 위해 Ionicons를 **unpkg CDN**을 통해 로드하도록 Fallback 구현.
+3. **Google Login Persistence**: Web 환경에서 로그인 상태가 유지되도록 **AsyncStorage** 연동 및 토큰 영구 저장 로직 보강.
+4. **Auth UX 개선**: 리디렉션 팝업 통신 실패 시를 대비한 **Hash-based Token Recovery** 구현 및 처리 완료 후 **팝업 자동 닫기** 기능 추가.
+5. **Android Status**: 웹 버전 인증 로직은 완성되었으나, Android 앱은 아직 구글 콘솔 API 연결이 되지 않은 상태로 기능 미구현.
 
 [2026-01-27 02:22] Phase 3.5 구글 드라이브 동기화 및 대시보드 정합성 해결
 1. **Google Drive Cloud Sync 구현**: `appDataFolder`를 활용한 프라이빗 백업/복구 시스템 구축.
@@ -216,6 +223,9 @@ Phase 3: Web Support (iOS Alternative)
 | 2026-01-27 | **Web Alert Fallback** | React Native `Alert`가 웹 브라우저에서 confirmation 버튼과 함께 동작하지 않는 이슈를 위해 `window.confirm` 사용. |
 | 2026-01-27 | **Numeric Casting** | `localStorage`에서 읽어온 데이터가 간혹 문자열로 취급되어 대시보드 합산 오류를 일으키는 것을 `Number()` 캐스팅으로 방지. |
 | 2026-01-27 | **Local Date Sync** | `toISOString()` 대신 현지 시간 기반의 `YYYY-MM-DD` 문자열을 사용하여 대시보드 '예정 거래' 필터링의 정확도 확보. |
+| 2026-01-28 | **GH Pages Sub-path** | GitHub Pages는 `/repo-name/` 형태의 하위 경로를 사용하므로 `baseUrl` 설정과 `./` 상대 경로 처리가 필수적임. |
+| 2026-01-28 | **Web Icon CORS** | GitHub Pages 도메인에서 `_expo/static` 폰트 로드 시 CORS 이슈 발생 가능. `unpkg`를 통한 외부 CDN Fallback이 가장 안정적. |
+| 2026-01-28 | **Auth Hash Recovery** | 팝업 창과 메인 창 간의 `message` 통신이 환경에 따라 차단될 수 있음. URL Hash(`access_token=...`)에서 직접 토큰을 추출하는 로직이 더 견고함. |
 
 ### 일본 시장 인사이트
 | 날짜 | 정보 |
@@ -292,6 +302,17 @@ kashimo/
 ## 7. 📝 진행 로그 (Progress Log)
 
 > 최신 항목이 위에 오도록 역순 정렬
+
+### 2026-01-28
+
+#### 02:05 - GitHub Pages 이전 및 웹 기능 정상화 ✅ (Session End) 🏁
+- **작업자**: AI Assistant
+- **작업 내용**:
+  - Netlify -> GitHub Pages (`/kashimo/`) 호환성 작업 및 CI/CD 구축.
+  - Ionicons 깨짐 현상 해결 (CORS 대응 CDN 패치).
+  - 웹 Google Login 리디렉션 불량 해결 (Hash Fallback & Auto-close).
+  - 웹 로그인 세션 유지 기능 추가 (AsyncStorage Persistence).
+- **현 상황**: Web(PWA)은 상용 수준의 아이콘/로그인 품질 확보. Android는 구글 인증 API 연결 대기 중.
 
 ### 2026-01-25
 

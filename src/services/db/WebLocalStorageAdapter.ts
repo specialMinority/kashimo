@@ -51,8 +51,13 @@ export class WebLocalStorageAdapter implements DatabaseAdapter {
 
     async getAllTransactions(): Promise<Transaction[]> {
         const transactions = this.getStoredTransactions();
-        // ORDER BY dueDate ASC
-        return transactions.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+        // ORDER BY dueDate ASC (null values last)
+        return transactions.sort((a, b) => {
+            if (!a.dueDate && !b.dueDate) return 0;
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            return a.dueDate.localeCompare(b.dueDate);
+        });
     }
 
     async getTransaction(id: string): Promise<Transaction | null> {
@@ -64,7 +69,12 @@ export class WebLocalStorageAdapter implements DatabaseAdapter {
         const transactions = this.getStoredTransactions();
         return transactions
             .filter(t => t.status === 'pending')
-            .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+            .sort((a, b) => {
+                if (!a.dueDate && !b.dueDate) return 0;
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return a.dueDate.localeCompare(b.dueDate);
+            });
     }
 
     async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
@@ -136,8 +146,13 @@ export class WebLocalStorageAdapter implements DatabaseAdapter {
         console.log(`📊 [getDashboardSummary] Range: ${todayStr} ~ ${nextWeekStr}`);
 
         const upcoming = pending
-            .filter(t => t.dueDate >= todayStr && t.dueDate <= nextWeekStr)
-            .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+            .filter(t => t.dueDate && t.dueDate >= todayStr && t.dueDate <= nextWeekStr)
+            .sort((a, b) => {
+                if (!a.dueDate && !b.dueDate) return 0;
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return a.dueDate.localeCompare(b.dueDate);
+            });
 
         console.log('📊 [getDashboardSummary] Upcoming count:', upcoming.length);
 

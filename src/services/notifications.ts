@@ -139,13 +139,19 @@ export async function scheduleTransactionReminders(
     transactionId: string,
     counterparty: string,
     amount: number,
-    dueDate: Date,
+    dueDate: Date | null,
     type: 'lent' | 'borrowed'
 ): Promise<string[]> {
     const settings = await getNotificationSettings();
 
     if (!settings.enabled) {
         console.log('⚠️ 알림이 비활성화되어 있습니다');
+        return [];
+    }
+
+    // 납부기한이 없으면 알림 스케줄링 스킵
+    if (!dueDate) {
+        console.log('⚠️ 납부기한이 없어 알림을 스케줄링하지 않습니다');
         return [];
     }
 
@@ -288,8 +294,16 @@ export async function checkRemindersOnAppLoad(): Promise<number> {
  * 웹용 시스템 알림 발송 helper
  */
 export const sendWebNotification = (title: string, body: string) => {
+    console.log('🔔 [WebNotification] Attempting to send. Permission:', Notification.permission);
     if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body, icon: '/assets/icon.png' });
+        try {
+            new Notification(title, { body, icon: './assets/icon.png' });
+            console.log('✅ [WebNotification] Sent successfully');
+        } catch (e) {
+            console.error('❌ [WebNotification] Error:', e);
+        }
+    } else {
+        console.warn('⚠️ [WebNotification] Skipped. Permission not granted or OS check failed.');
     }
 };
 
@@ -300,7 +314,7 @@ export async function sendTestNotification(): Promise<void> {
     if (Platform.OS === 'web') {
         if (Notification.permission === 'granted') {
             sendWebNotification('カシモ テスト通知', 'Web通知が正常に動作しています！');
-            // alert('通知を送信しました');
+            alert('テスト通知を送信しました。ブラウザの通知を確認してください。');
         } else {
             alert('알림 권한이 없습니다. 설정을 확인해주세요.');
         }

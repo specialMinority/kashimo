@@ -16,7 +16,7 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
                     amount REAL NOT NULL,
                     type TEXT NOT NULL,
                     counterparty TEXT NOT NULL,
-                    dueDate TEXT NOT NULL,
+                    dueDate TEXT,
                     status TEXT NOT NULL,
                     memo TEXT,
                     createdAt TEXT NOT NULL,
@@ -46,7 +46,7 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
         await db.runAsync(
             `INSERT INTO transactions (id, amount, type, counterparty, dueDate, status, memo, createdAt)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [id, input.amount, input.type, input.counterparty, input.dueDate, status, input.memo || null, createdAt]
+            [id, input.amount, input.type, input.counterparty, input.dueDate || null, status, input.memo || null, createdAt]
         );
 
         return {
@@ -62,7 +62,9 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
     async getAllTransactions(): Promise<Transaction[]> {
         const db = this.getDb();
         const result = await db.getAllAsync<Transaction>(
-            `SELECT * FROM transactions ORDER BY dueDate ASC`
+            `SELECT * FROM transactions ORDER BY 
+             CASE WHEN dueDate IS NULL THEN 1 ELSE 0 END,
+             dueDate ASC`
         );
         return result.map(row => ({ ...row, userId: 'local-user', reminders: [] }));
     }
@@ -80,7 +82,9 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
     async getPendingTransactions(): Promise<Transaction[]> {
         const db = this.getDb();
         const result = await db.getAllAsync<Transaction>(
-            `SELECT * FROM transactions WHERE status = 'pending' ORDER BY dueDate ASC`
+            `SELECT * FROM transactions WHERE status = 'pending' ORDER BY 
+             CASE WHEN dueDate IS NULL THEN 1 ELSE 0 END,
+             dueDate ASC`
         );
         return result.map(row => ({ ...row, userId: 'local-user', reminders: [] }));
     }
@@ -156,6 +160,7 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
         const upcoming = await db.getAllAsync<Transaction>(
             `SELECT * FROM transactions 
              WHERE status = 'pending' 
+             AND dueDate IS NOT NULL
              AND dueDate >= ? 
              AND dueDate <= ?
              ORDER BY dueDate ASC`,
@@ -184,7 +189,7 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
                 await db.runAsync(
                     `INSERT INTO transactions (id, amount, type, counterparty, dueDate, status, memo, createdAt, completedAt)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [t.id, t.amount, t.type, t.counterparty, t.dueDate, t.status, t.memo || null, t.createdAt, t.completedAt || null]
+                    [t.id, t.amount, t.type, t.counterparty, t.dueDate || null, t.status, t.memo || null, t.createdAt, t.completedAt || null]
                 );
             }
             await db.runAsync('COMMIT');

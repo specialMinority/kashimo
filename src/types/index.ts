@@ -23,7 +23,7 @@ export interface Transaction {
     counterpartyContact?: string;   // 상대방 연락처 (optional)
     amount: number;
     type: TransactionType;
-    dueDate: string;                // ISO date string
+    dueDate?: string;               // ISO date string (optional)
     status: TransactionStatus;
     memo?: string;
     receiptUrl?: string;            // 영수증 사진 URL
@@ -38,7 +38,7 @@ export interface CreateTransactionInput {
     counterpartyContact?: string;
     amount: number;
     type: TransactionType;
-    dueDate: string;
+    dueDate?: string;
     memo?: string;
 }
 
