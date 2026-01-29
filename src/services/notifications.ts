@@ -312,11 +312,28 @@ export const sendWebNotification = (title: string, body: string) => {
  */
 export async function sendTestNotification(): Promise<void> {
     if (Platform.OS === 'web') {
+        console.log('🔍 [TestNotification] Web environment detected');
+        console.log('🔍 [TestNotification] Notification support:', 'Notification' in window);
+        console.log('🔍 [TestNotification] Current permission:', Notification.permission);
+
+        if (!('Notification' in window)) {
+            alert('❌ このブラウザは通知をサポートしていません。\n\niOS PWAの場合、iOS 16.4以降が必要です。');
+            return;
+        }
+
         if (Notification.permission === 'granted') {
-            sendWebNotification('カシモ テスト通知', 'Web通知が正常に動作しています！');
-            alert('テスト通知を送信しました。ブラウザの通知を確認してください。');
+            try {
+                sendWebNotification('カシモ テスト通知', 'Web通知が正常に動作しています！');
+                alert('✅ テスト通知を送信しました。\n\n通知が表示されない場合:\n1. ホーム画面に追加したPWAから開いているか確認\n2. iOS設定 > 通知 > Safariを確認\n3. ブラウザを再起動');
+            } catch (error) {
+                console.error('❌ [TestNotification] Error:', error);
+                alert('❌ 通知送信エラー: ' + error);
+            }
+        } else if (Notification.permission === 'denied') {
+            alert('❌ 通知権限が拒否されています。\n\niOS PWA: 設定 > Safari > 通知を確認\nAndroid PWA: 設定 > サイトの設定 > 通知を確認');
         } else {
-            alert('알림 권한이 없습니다. 설정을 확인해주세요.');
+            // default 상태 - 권한 요청
+            alert('⚠️ 通知権限がまだ許可されていません。\n\n「設定」画面で通知を有効にしてから、もう一度お試しください。');
         }
         return;
     }
