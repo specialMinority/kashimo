@@ -63,22 +63,20 @@ export default function AddScreen() {
             showAlert('エラー', '金額を正しく入力してください');
             return;
         }
-        if (!dueDate) {
-            showAlert('エラー', '返済期限を入力してください');
-            return;
-        }
+        // 납부기한이 입력된 경우에만 날짜 형식 검증
+        if (dueDate.trim()) {
+            // 날짜 형식 유연화 (YYYYMMDD -> YYYY-MM-DD)
+            let formattedDate = dueDate.trim();
+            if (/^\d{8}$/.test(formattedDate)) {
+                formattedDate = `${formattedDate.slice(0, 4)}-${formattedDate.slice(4, 6)}-${formattedDate.slice(6, 8)}`;
+            }
 
-        // 날짜 형식 유연화 (YYYYMMDD -> YYYY-MM-DD)
-        let formattedDate = dueDate.trim();
-        if (/^\d{8}$/.test(formattedDate)) {
-            formattedDate = `${formattedDate.slice(0, 4)}-${formattedDate.slice(4, 6)}-${formattedDate.slice(6, 8)}`;
-        }
-
-        // 날짜 형식 검증 (YYYY-MM-DD)
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(formattedDate)) {
-            showAlert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
-            return;
+            // 날짜 형식 검증 (YYYY-MM-DD)
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(formattedDate)) {
+                showAlert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
+                return;
+            }
         }
 
         setIsSubmitting(true);
@@ -88,7 +86,11 @@ export default function AddScreen() {
                 counterparty: counterparty.trim(),
                 amount: Number(amount),
                 type,
-                dueDate: formattedDate,
+                dueDate: dueDate.trim() ? (
+                    /^\d{8}$/.test(dueDate.trim())
+                        ? `${dueDate.trim().slice(0, 4)}-${dueDate.trim().slice(4, 6)}-${dueDate.trim().slice(6, 8)}`
+                        : dueDate.trim()
+                ) : undefined,
                 memo: memo.trim() || undefined,
             };
 
@@ -96,15 +98,20 @@ export default function AddScreen() {
             const newTransaction = await addTransaction(input);
             console.log('✅ Transaction saved locally:', newTransaction);
 
-            // 🔔 알림 스케줄링
-            const scheduledIds = await scheduleTransactionReminders(
-                newTransaction.id,
-                counterparty.trim(),
-                Number(amount),
-                new Date(formattedDate),
-                type
-            );
-            console.log('🔔 Notifications scheduled:', scheduledIds.length, '개');
+            // 🔔 알림 스케줄링 (납부기한이 있을 때만)
+            let scheduledIds: string[] = [];
+            if (newTransaction.dueDate) {
+                scheduledIds = await scheduleTransactionReminders(
+                    newTransaction.id,
+                    counterparty.trim(),
+                    Number(amount),
+                    new Date(newTransaction.dueDate),
+                    type
+                );
+                console.log('🔔 Notifications scheduled:', scheduledIds.length, '개');
+            } else {
+                console.log('⚠️ 납부기한이 없어 알림을 스케줄링하지 않습니다');
+            }
 
             showAlert(
                 '完了',
@@ -220,7 +227,7 @@ export default function AddScreen() {
 
                     {/* 반환 기한 */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>返済期限 *</Text>
+                        <Text style={styles.label}>返済期限 (任意)</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="2026-02-24"

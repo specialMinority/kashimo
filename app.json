@@ -33,7 +33,7 @@
       "backgroundColor": "#4ECDC4",
       "themeColor": "#4ECDC4",
       "description": "Kashimo - P2P Finance Manager for Friends",
-      "startUrl": "/",
+      "startUrl": "./",
       "meta": {
         "apple": {
           "mobile-web-app-capable": "yes",

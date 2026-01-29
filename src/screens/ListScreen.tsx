@@ -230,7 +230,7 @@ export default function ListScreen() {
 
     const renderTransaction = ({ item }: { item: Transaction }) => {
         const isCompleted = item.status === 'completed';
-        const isOverdue = !isCompleted && new Date(item.dueDate) < new Date();
+        const isOverdue = !isCompleted && item.dueDate && new Date(item.dueDate) < new Date();
 
         return (
             <Swipeable
@@ -268,7 +268,7 @@ export default function ListScreen() {
                             <Text style={styles.memo}>{item.memo}</Text>
                         )}
                         <Text style={styles.date}>
-                            期限: {new Date(item.dueDate).toLocaleDateString('ja-JP')}
+                            期限: {item.dueDate ? new Date(item.dueDate).toLocaleDateString('ja-JP') : '設定なし'}
                         </Text>
                     </View>
 
@@ -290,12 +290,18 @@ export default function ListScreen() {
                                 <Text style={styles.statusText}>{TRANSACTION_STATUS_LABELS.overdue}</Text>
                             </View>
                         ) : (
-                            <View style={[
-                                styles.dDayBadge,
-                                { backgroundColor: getDDayColor(item.dueDate) }
-                            ]}>
-                                <Text style={styles.dDayText}>{getDDay(new Date(item.dueDate))}</Text>
-                            </View>
+                            item.dueDate ? (
+                                <View style={[
+                                    styles.dDayBadge,
+                                    { backgroundColor: getDDayColor(item.dueDate) }
+                                ]}>
+                                    <Text style={styles.dDayText}>{getDDay(new Date(item.dueDate))}</Text>
+                                </View>
+                            ) : (
+                                <View style={[styles.statusBadge, { backgroundColor: colors.neutral.disabled }]}>
+                                    <Text style={styles.statusText}>期限なし</Text>
+                                </View>
+                            )
                         )}
                     </View>
                 </TouchableOpacity>

@@ -8,7 +8,7 @@
 
 > **Hybrid Architecture**:
 > *   **Android**: Google Play Store (Native App)
-> *   **iOS**: Safari PWA (Add to Home Screen)
+> *   **iOS**: [Web PWA](https://specialminority.github.io/kashimo) (Add to Home Screen)
 
 ## 📱 주요 기능
 
@@ -56,7 +56,7 @@
     - Web: `localStorage` (Adapter Pattern)
 - **File System**: `expo-file-system` (Legacy Import)
 - **Notification**: `expo-notifications` (Local Push)
-- **Deployment**: Play Store (Android) / Vercel (Web PWA)
+- **Deployment**: Play Store (Android) / **GitHub Pages** (Web PWA)
 
 ## 📁 프로젝트 구조
 
@@ -96,7 +96,14 @@ npm install
 npx expo start --web
 ```
 
-### 2. 안드로이드 실행 및 빌드
+### 2. 빌드 및 배포 (GitHub Pages)
+
+```bash
+# 웹 앱 빌드 및 배포
+npm run deploy
+```
+
+### 3. 안드로이드 실행 및 빌드
 
 ```bash
 # 개발 서버 실행 (Android)

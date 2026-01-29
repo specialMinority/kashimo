@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     getNotificationSettings,
     saveNotificationSettings,
@@ -76,8 +77,12 @@ export default function SettingsScreen() {
     const [request, response, promptAsync] = Google.useAuthRequest({
         androidClientId: GOOGLE_CONFIG.androidClientId,
         webClientId: GOOGLE_CONFIG.webClientId,
-        // Web PWA의 경우 명시적인 Redirect URI가 권장됩니다.
-        redirectUri: AuthSession.makeRedirectUri(),
+        // Web PWA의 경우 하위 경로(/kashimo/)를 포함한 정확한 리디렉션 주소가 필수입니다.
+        // 끝에 슬래시(/)가 포함된 것이 Google Cloud Console 설정과 맞추기 더 명확합니다.
+        redirectUri: AuthSession.makeRedirectUri({
+            preferLocalhost: false,
+            path: Platform.OS === 'web' && !window.location.hostname.includes('localhost') ? 'kashimo/' : undefined,
+        }),
         scopes: [
             'https://www.googleapis.com/auth/drive.appdata',
             'https://www.googleapis.com/auth/drive.file',
@@ -85,21 +90,74 @@ export default function SettingsScreen() {
         ],
     });
 
-    // 로그인을 시도했을 때 응답 처리 (Web에서는 이 방식이 더 안정적입니다)
+
+    // 앱 시작 시 저장된 토큰 또는 URL 해시에서 토큰 확인
+    useEffect(() => {
+        const loadSavedToken = async () => {
+            try {
+                let savedToken = await AsyncStorage.getItem('google_access_token');
+
+                // [Web] URL 해시에서 토큰 추출 시도 (리디렉션 창에서 통신이 끊겼을 때를 대비한 Fallback)
+                if (Platform.OS === 'web' && window.location.hash) {
+                    const params = new URLSearchParams(window.location.hash.substring(1));
+                    const hashToken = params.get('access_token');
+                    if (hashToken) {
+                        console.log('🔗 [Auth] Token found in URL hash. Saving...');
+                        savedToken = hashToken;
+                        await AsyncStorage.setItem('google_access_token', hashToken);
+
+                        // 로그인 성공 후 URL에서 해시 제거 및 팝업 닫기 시도 (UX 향상)
+                        window.history.replaceState({}, document.title, window.location.pathname);
+
+                        // 팝업창인 경우 자동으로 닫기 시도 (잠시 후)
+                        if (window.opener) {
+                            setTimeout(() => {
+                                try { window.close(); } catch (e) { console.log('Failed to close window'); }
+                            }, 500);
+                        }
+                    }
+                }
+
+                if (savedToken) {
+                    console.log('💾 [Auth] Saved token found, attempting auto-login...');
+                    setLoading(true);
+                    setAccessToken(savedToken);
+                    const userInfo = await getGoogleUserInfo(savedToken);
+                    setUser(userInfo);
+                    console.log('✅ [Auth] Auto-login success:', userInfo.email);
+                }
+            } catch (err) {
+                console.log('ℹ️ [Auth] No saved session or token expired');
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadSavedToken();
+    }, []);
+
+    // 로그인을 시도했을 때 응답 처리
     useEffect(() => {
         console.log('🔄 Auth Response received:', response?.type);
         if (response?.type === 'success') {
             const { authentication } = response;
             console.log('🔑 Authentication success. Token present:', !!authentication?.accessToken);
             if (authentication?.accessToken) {
+                const token = authentication.accessToken;
                 setLoading(true);
-                setAccessToken(authentication.accessToken);
-                getGoogleUserInfo(authentication.accessToken)
+                setAccessToken(token);
+
+                // 토큰 영구 저장
+                AsyncStorage.setItem('google_access_token', token);
+
+                getGoogleUserInfo(token)
                     .then(userInfo => {
                         setUser(userInfo);
                         console.log('✅ Google User Info loaded:', userInfo.email);
                     })
-                    .catch(err => console.error('UserInfo fetch error:', err))
+                    .catch(err => {
+                        console.error('UserInfo fetch error:', err);
+                        alert('사용자 정보를 가져오는데 실패했습니다. 다시 로그인해 주세요.');
+                    })
                     .finally(() => setLoading(false));
             }
         } else if (response?.type === 'error') {
@@ -130,9 +188,11 @@ export default function SettingsScreen() {
     };
 
     // 구글 로그아웃
-    const handleGoogleLogout = () => {
+    const handleGoogleLogout = async () => {
         setUser(null);
         setAccessToken(null);
+        await AsyncStorage.removeItem('google_access_token');
+        console.log('🚪 [Auth] Logged out and token removed');
     };
 
     // 클라우드 백업 실행

@@ -68,19 +68,41 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 }
 
 export default function App() {
-  const [fontsLoaded, fontError] = useFonts({
-    ...Ionicons.font,
-  });
+  console.log('App: Rendering started');
+
+  // Web에서 아이콘 안보임 문제 해결을 위해 CDN 경로 명시 (CORS 허용되는 unpkg 사용)
+  const fontSource = Platform.OS === 'web'
+    ? {
+      ...Ionicons.font,
+      'ionicons': 'https://unpkg.com/@expo/vector-icons@15.0.3/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'
+    }
+    : Ionicons.font;
+
+  const [fontsLoaded, fontError] = useFonts(fontSource);
 
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     const setup = async () => {
       try {
+        console.log('App: Setup started');
         await initDatabase();
-        await requestNotificationPermissions();
+        console.log('App: DB Init done');
+
+        // Notifications might be tricky on Web
+        try {
+          await requestNotificationPermissions();
+          console.log('App: Notifications init done');
+        } catch (notifError) {
+          console.warn('App: Notification permission failed but continuing', notifError);
+        }
+
       } catch (e) {
         console.error('Setup failed', e);
+        if (Platform.OS === 'web') {
+          // On web, if setup fails, we might still want to try showing something
+          console.log('App: Setup failed but trying to proceed');
+        }
       }
     };
     setup();
@@ -92,14 +114,18 @@ export default function App() {
       } catch (e) { }
     }
 
-    // 5초 타임아웃
+    // 5초 타임아웃 (Safety fallback)
     const timer = setTimeout(() => {
-      setIsReady(true);
+      setIsReady(prev => {
+        if (!prev) console.log('App: 5s Fallback timer triggered isReady');
+        return true;
+      });
     }, 5000);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
+    console.log('App: Font status changed', { fontsLoaded, fontError });
     if (fontsLoaded || fontError) {
       setIsReady(true);
       SplashScreen.hideAsync().catch(() => { });
@@ -110,12 +136,14 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primary.main }}>
         <ActivityIndicator size="large" color="white" />
+        <Text style={{ color: 'white', marginTop: 10 }}>Kashimo Initializing...</Text>
       </View>
     );
   }
 
-  const RootView = GestureHandlerRootView; // Swipeable을 위해 필수
+  const RootView = GestureHandlerRootView;
 
+  console.log('App: Rendering Navigation Container');
   return (
     <ErrorBoundary>
       <RootView style={{ flex: 1 }}>
@@ -129,7 +157,7 @@ export default function App() {
                 headerTitleStyle: { fontWeight: 'bold' },
                 headerBackTitleVisible: false,
                 headerLeft: (props) => {
-                  if (props.canGoBack) {
+                  if (props?.canGoBack) {
                     return (
                       <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
                         <Ionicons name="arrow-back" size={24} color={colors.neutral.white} />
@@ -153,7 +181,7 @@ export default function App() {
               <Stack.Screen
                 name="Edit"
                 component={EditScreen}
-                options={{ title: '取引を編集' }}
+                options={{ title: '取引를 編集' }}
               />
             </Stack.Navigator>
           </NavigationContainer>
