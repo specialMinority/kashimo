@@ -89,13 +89,9 @@ export default function App() {
         await initDatabase();
         console.log('App: DB Init done');
 
-        // Notifications might be tricky on Web
-        try {
-          await requestNotificationPermissions();
-          console.log('App: Notifications init done');
-        } catch (notifError) {
-          console.warn('App: Notification permission failed but continuing', notifError);
-        }
+        // 알림 권한은 사용자가 설정 화면에서 명시적으로 켤 때만 요청
+        // 앱 시작 시 자동으로 권한 요청하지 않음 (불필요한 팝업 방지)
+        console.log('App: Notification permission will be requested when user enables it in settings');
 
       } catch (e) {
         console.error('Setup failed', e);
