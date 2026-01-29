@@ -351,18 +351,35 @@ export default function SettingsScreen() {
         });
     };
 
-    // 테스트 알림 전송
+    // 테스트 알림 발송 핸들러
     const handleTestNotification = async () => {
         setLoading(true);
         try {
+            // 권한 체크
+            const hasPermission = await requestNotificationPermissions();
+            if (!hasPermission) {
+                Alert.alert(
+                    '通知権限が必要です',
+                    '設定アプリから通知を許可してください',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
             await sendTestNotification();
-            Alert.alert('送信完了', '5秒後に通知が届きます');
+
+            // 웹이 아닌 경우에만 성공 메시지 표시 (웹은 함수 내부에서 alert 처리)
+            if (Platform.OS !== 'web') {
+                Alert.alert('完了', 'テスト通知を送信しました');
+            }
         } catch (error) {
-            Alert.alert('エラー', '通知の送信に失敗しました');
+            console.error('Test notification error:', error);
+            Alert.alert('エラー', 'テスト通知の送信に失敗しました');
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <ScrollView style={styles.container}>

@@ -103,22 +103,20 @@ export default function EditScreen() {
             showAlert('エラー', '金額を正しく入力してください');
             return;
         }
-        if (!dueDate) {
-            showAlert('エラー', '返済期限を入力してください');
-            return;
-        }
+        // 납부기한이 입력된 경우에만 날짜 형식 검증
+        if (dueDate.trim()) {
+            // 날짜 형식 유연화 (YYYYMMDD -> YYYY-MM-DD)
+            let formattedDate = dueDate.trim();
+            if (/^\d{8}$/.test(formattedDate)) {
+                formattedDate = `${formattedDate.slice(0, 4)}-${formattedDate.slice(4, 6)}-${formattedDate.slice(6, 8)}`;
+            }
 
-        // 날짜 형식 유연화 (YYYYMMDD -> YYYY-MM-DD)
-        let formattedDate = dueDate.trim();
-        if (/^\d{8}$/.test(formattedDate)) {
-            formattedDate = `${formattedDate.slice(0, 4)}-${formattedDate.slice(4, 6)}-${formattedDate.slice(6, 8)}`;
-        }
-
-        // 날짜 형식 검증 (YYYY-MM-DD)
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(formattedDate)) {
-            showAlert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
-            return;
+            // 날짜 형식 검증 (YYYY-MM-DD)
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(formattedDate)) {
+                showAlert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
+                return;
+            }
         }
 
         setSaving(true);
@@ -129,19 +127,28 @@ export default function EditScreen() {
                 counterparty: counterparty.trim(),
                 amount: Number(amount),
                 type,
-                dueDate: formattedDate,
+                dueDate: dueDate.trim() ? (
+                    /^\d{8}$/.test(dueDate.trim())
+                        ? `${dueDate.trim().slice(0, 4)}-${dueDate.trim().slice(4, 6)}-${dueDate.trim().slice(6, 8)}`
+                        : dueDate.trim()
+                ) : undefined,
                 memo: memo.trim() || undefined,
             });
 
             // 2. 알림 재설정 (기존 알림 취소 후 재생성)
             await cancelTransactionReminders(transactionId);
-            await scheduleTransactionReminders(
-                transactionId,
-                counterparty.trim(),
-                Number(amount),
-                new Date(formattedDate),
-                type
-            );
+            if (dueDate.trim()) {
+                const finalDate = /^\d{8}$/.test(dueDate.trim())
+                    ? `${dueDate.trim().slice(0, 4)}-${dueDate.trim().slice(4, 6)}-${dueDate.trim().slice(6, 8)}`
+                    : dueDate.trim();
+                await scheduleTransactionReminders(
+                    transactionId,
+                    counterparty.trim(),
+                    Number(amount),
+                    new Date(finalDate),
+                    type
+                );
+            }
 
             showAlert('完了', '修正しました', [
                 {
@@ -270,7 +277,7 @@ export default function EditScreen() {
 
                     {/* 반환 기한 */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>返済期限 *</Text>
+                        <Text style={styles.label}>返済期限 (任意)</Text>
                         <TextInput
                             style={styles.input}
                             value={dueDate}
