@@ -29,6 +29,7 @@
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/icon.png",
+      "baseUrl": "/kashimo/",
       "display": "standalone",
       "backgroundColor": "#4ECDC4",
       "themeColor": "#4ECDC4",
