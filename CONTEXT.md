@@ -238,6 +238,7 @@ Phase 3: Web Support (iOS Alternative)
 | 2026-01-28 | **Web Icon CORS** | GitHub Pages 도메인에서 `_expo/static` 폰트 로드 시 CORS 이슈 발생 가능. `unpkg`를 통한 외부 CDN Fallback이 가장 안정적. |
 | 2026-01-28 | **Auth Hash Recovery** | 팝업 창과 메인 창 간의 `message` 통신이 환경에 따라 차단될 수 있음. URL Hash(`access_token=...`)에서 직접 토큰을 추출하는 로직이 더 견고함. |
 | 2026-01-31 | **Japanese Localization** | 일본 시장 진출을 위해 README.md와 모든 UI 문자열을 일본어로 현지화. 특히 채용 담당자가 볼 README는 기술적 정확성과 자연스러운 일본어 표현을 동시에 고려. |
+| 2026-01-31 | **Git Branch Simplification** | 토이 프로젝트 특성상 복잡한 브랜치 전략 불필요. `feature/web-pwa-optimization` 브랜치 삭제하고 `master` 단일 브랜치로 운영. `gh-pages`는 GitHub Actions가 자동 관리. |
 
 ### 일본 시장 인사이트
 | 날짜 | 정보 |
@@ -316,6 +317,14 @@ kashimo/
 > 최신 항목이 위에 오도록 역순 정렬
 
 ### 2026-01-31
+
+#### 05:35 - Git 브랜치 정리 ✅
+- **작업자**: AI Assistant
+- **작업 내용**:
+  - `feature/web-pwa-optimization` 브랜치 삭제 (로컬 + 원격)
+  - 토이 프로젝트 특성상 단순한 브랜치 구조로 변경
+  - 현재 브랜치: `master` (개발), `gh-pages` (자동 배포)
+- **결과**: 깔끔한 단일 브랜치 워크플로우로 전환 완료.
 
 #### 04:51 - 일본어 현지화 완료 ✅ (Session End) 🎌
 - **작업자**: AI Assistant
