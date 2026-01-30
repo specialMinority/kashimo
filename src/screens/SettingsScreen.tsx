@@ -156,7 +156,7 @@ export default function SettingsScreen() {
                     })
                     .catch(err => {
                         console.error('UserInfo fetch error:', err);
-                        alert('사용자 정보를 가져오는데 실패했습니다. 다시 로그인해 주세요.');
+                        alert('ユーザー情報の取得に失敗しました。再度ログインしてください。');
                     })
                     .finally(() => setLoading(false));
             }
@@ -181,7 +181,7 @@ export default function SettingsScreen() {
             }
         } catch (error) {
             console.error('Google Login Error:', error);
-            Alert.alert('エラー', 'Googleログイン에 실패했습니다');
+            Alert.alert('エラー', 'Googleログインに失敗しました');
         } finally {
             setLoading(false);
         }
@@ -220,12 +220,12 @@ export default function SettingsScreen() {
             await uploadBackupToDrive(accessToken!, jsonString, fileId);
 
             console.log('4. Backup Success!');
-            const msg = '成功: Googleドライブにバックアップを保存했습니다';
+            const msg = '成功: Googleドライブにバックアップを保存しました';
             if (Platform.OS === 'web') alert(msg);
             else Alert.alert('成功', msg);
         } catch (error) {
             console.error('Cloud Backup Error:', error);
-            const msg = `クラウドバック업에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`;
+            const msg = `クラウドバックアップに失敗しました: ${error instanceof Error ? error.message : String(error)}`;
             if (Platform.OS === 'web') alert(msg);
             else Alert.alert('エラー', msg);
         } finally {
@@ -243,16 +243,16 @@ export default function SettingsScreen() {
         }
 
         if (Platform.OS === 'web') {
-            if (window.confirm('クラウド復元: Googleドライブから 데이터를 읽기, 현재의 데이터를 덮어쓰시겠습니까?')) {
+            if (window.confirm('クラウド復元: Googleドライブからデータを読み込み、現在のデータを上書きしますか？')) {
                 executeRestore();
             }
         } else {
             Alert.alert(
                 'クラウド復元',
-                'Googleドライブから 데이터를 읽기, 현재의 데이터를 덮어쓰시겠습니까?',
+                'Googleドライブからデータを読み込み、現在のデータを上書きしますか？',
                 [
                     { text: 'キャンセル', style: 'cancel' },
-                    { text: '実行하는', onPress: () => executeRestore() }
+                    { text: '実行する', onPress: () => executeRestore() }
                 ]
             );
         }
@@ -265,7 +265,7 @@ export default function SettingsScreen() {
             const fileId = await findBackupFile(accessToken!);
             if (!fileId) {
                 console.log('❌ No backup file found');
-                const msg = '通知: Googleドライブ에 백업 파일이 존재하지 않습니다';
+                const msg = '通知: Googleドライブにバックアップファイルが存在しません';
                 if (Platform.OS === 'web') alert(msg);
                 else Alert.alert('通知', msg);
                 return;
@@ -279,7 +279,7 @@ export default function SettingsScreen() {
                 console.log('3. Replacing local data...');
                 await replaceAllTransactions(parsedData.transactions);
                 console.log('4. Restore Success!');
-                const msg = '完了: 데이터를 복원했습니다. 앱을 다시 시작해 주세요.';
+                const msg = '完了: データを復元しました。アプリを再起動してください。';
                 if (Platform.OS === 'web') {
                     alert(msg);
                     window.location.reload();
@@ -289,7 +289,7 @@ export default function SettingsScreen() {
             }
         } catch (error) {
             console.error('Cloud Restore Error:', error);
-            const msg = `クラウド복원에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`;
+            const msg = `クラウド復元に失敗しました: ${error instanceof Error ? error.message : String(error)}`;
             if (Platform.OS === 'web') alert(msg);
             else Alert.alert('エラー', msg);
         } finally {
@@ -455,7 +455,7 @@ export default function SettingsScreen() {
                                 <Ionicons name="person-circle-outline" size={24} color={colors.primary.main} />
                                 <Text style={styles.userEmail}>{user.email}</Text>
                                 <TouchableOpacity onPress={handleGoogleLogout}>
-                                    <Text style={styles.logoutText}>로그아웃</Text>
+                                    <Text style={styles.logoutText}>ログアウト</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -468,7 +468,7 @@ export default function SettingsScreen() {
                                     disabled={cloudLoading}
                                 >
                                     <Ionicons name="cloud-upload" size={18} color="white" />
-                                    <Text style={styles.smallButtonText}>{cloudLoading ? '중...' : '클라우드 백업'}</Text>
+                                    <Text style={styles.smallButtonText}>{cloudLoading ? '処理中...' : 'クラウドバックアップ'}</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
@@ -477,7 +477,7 @@ export default function SettingsScreen() {
                                     disabled={cloudLoading}
                                 >
                                     <Ionicons name="cloud-download" size={18} color="white" />
-                                    <Text style={styles.smallButtonText}>클라우드 복원</Text>
+                                    <Text style={styles.smallButtonText}>クラウド復元</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -492,7 +492,7 @@ export default function SettingsScreen() {
                     <TouchableOpacity style={styles.settingItem} onPress={exportData}>
                         <View style={styles.settingInfo}>
                             <Ionicons name="document-text-outline" size={24} color={colors.neutral.textSecondary} />
-                            <Text style={styles.settingLabel}>파일로 내보내기 (.json)</Text>
+                            <Text style={styles.settingLabel}>ファイルにエクスポート (.json)</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={colors.neutral.textSecondary} />
                     </TouchableOpacity>
@@ -500,7 +500,7 @@ export default function SettingsScreen() {
                     <TouchableOpacity style={styles.settingItem} onPress={importData}>
                         <View style={styles.settingInfo}>
                             <Ionicons name="folder-open-outline" size={24} color={colors.neutral.textSecondary} />
-                            <Text style={styles.settingLabel}>파일에서 불러오기</Text>
+                            <Text style={styles.settingLabel}>ファイルからインポート</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={colors.neutral.textSecondary} />
                     </TouchableOpacity>

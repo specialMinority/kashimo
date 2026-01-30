@@ -11,8 +11,8 @@
 | 항목 | 값 |
 |------|-----|
 | **프로젝트명** | Kashimo (カシモ) |
-| **상태** | `✅ 개발 완료 - Phase 3.5 (Cloud Sync & Dashboard Fix) Verified` |
-| **마지막 업데이트** | 2026-01-27 02:22 KST |
+| **상태** | ✅ 개발 완료 - Phase 3.7 (Optional Due Date & Notification UX) Verified |
+| **마지막 업데이트** | 2026-01-30 10:00 KST |
 | **프로젝트 경로** | `c:\Users\PC\.gemini\antigravity\scratch\kashimo` |
 | **기획서 경로** | `C:\Users\PC\.gemini\antigravity\brain\b215a033-abf2-4ea5-80f3-7eb01deabf38\implementation_plan.md` |
 
@@ -65,9 +65,14 @@
 
 ### 🔴 활성 태스크
 ```
-없음 - GitHub Pages 이전 및 웹 버그(아이콘, 구글 로그인) 해결 완료! 🚀
+없음 - 납부기한 선택사항 처리 및 알림 UX 고도화 완료! 🚀
 다음 단계: Android Google API 연결 및 스토어 출시 준비
 ```
+
+[2026-01-30 10:00] Phase 3.7 납부기한 선택사항 및 알림 UX 고도화 (Verified)
+1. **Optional Due Date**: `dueDate`를 선택사항으로 변경. SQLite 스키마(Text nullable) 및 모든 UI(Add/Edit/Detail/List) 대응 완료.
+2. **Notification UX**: 앱 시작 시 불필요한 권한 팝업 제거 및 설정 화면에서의 명시적 요청 방식으로 개선.
+3. **CI/CD Fix**: GitHub Actions 배포 브랜치(master) 및 경로(baseUrl) 문제 해결로 안정적 호스팅 달성.
 
 [2026-01-28 02:10] Phase 3.6 GitHub Pages 이전 및 웹 최적화 (Verified)
 1. **Hosting Migration**: Netlify에서 GitHub Pages로 이전. 하위 경로(`/kashimo/`) 호환성을 위한 `baseUrl` 및 상대 경로(`./`) 설정 완료.
@@ -302,6 +307,11 @@ kashimo/
 ## 7. 📝 진행 로그 (Progress Log)
 
 > 최신 항목이 위에 오도록 역순 정렬
+
+### 2026-01-30
+
+#### 10:00 - 납부기한 선택사항 처리 및 알림 UX 고도화 ✅ (Session End) 🏁
+- **작업 내용**: 납부기한 선택사항화(DB/UI), 알림 권한 팝업 문제 해결, GitHub Pages 배포 자동화 수정.
 
 ### 2026-01-28
 
