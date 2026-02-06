@@ -23,10 +23,71 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
                     completedAt TEXT
                 );
             `);
+            
+            // Check and migrate schema if needed
+            await this.migrateSchemaIfNeeded();
+            
             console.log('✅ [Native] Local Database initialized');
         } catch (error) {
             console.error('❌ Failed to init native database:', error);
             throw error;
+        }
+    }
+
+    private async migrateSchemaIfNeeded(): Promise<void> {
+        const db = this.getDb();
+        try {
+            // Check table info to see if dueDate is NOT NULL
+            const tableInfo = await db.getAllAsync<{ name: string, notnull: number }>(
+                `PRAGMA table_info(transactions)`
+            );
+            
+            const dueDateColumn = tableInfo.find(col => col.name === 'dueDate');
+            
+            // If dueDate exists and has NOT NULL constraint (notnull === 1), we need to migrate
+            if (dueDateColumn && dueDateColumn.notnull === 1) {
+                console.log('⚠️ [Native] Detected strict schema on dueDate. Starting migration...');
+                
+                await db.runAsync('BEGIN TRANSACTION');
+                
+                // 1. Rename existing table
+                await db.runAsync('ALTER TABLE transactions RENAME TO transactions_old');
+                
+                // 2. Create new table with correct schema (dueDate allowing NULL)
+                await db.runAsync(`
+                    CREATE TABLE transactions (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        amount REAL NOT NULL,
+                        type TEXT NOT NULL,
+                        counterparty TEXT NOT NULL,
+                        dueDate TEXT,
+                        status TEXT NOT NULL,
+                        memo TEXT,
+                        createdAt TEXT NOT NULL,
+                        completedAt TEXT
+                    )
+                `);
+                
+                // 3. Copy data
+                await db.runAsync(`
+                    INSERT INTO transactions (id, amount, type, counterparty, dueDate, status, memo, createdAt, completedAt)
+                    SELECT id, amount, type, counterparty, dueDate, status, memo, createdAt, completedAt
+                    FROM transactions_old
+                `);
+                
+                // 4. Drop old table
+                await db.runAsync('DROP TABLE transactions_old');
+                
+                await db.runAsync('COMMIT');
+                console.log('✅ [Native] Schema migration completed: dueDate is now nullable');
+            }
+        } catch (error) {
+            console.error('❌ [Native] Schema migration failed:', error);
+            try {
+                await db.runAsync('ROLLBACK');
+            } catch (e) {
+                // Ignore rollback error if transaction wasn't active
+            }
         }
     }
 
