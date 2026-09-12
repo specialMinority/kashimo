@@ -52,13 +52,27 @@ npx eas-cli login
 npx eas-cli build --platform android --profile production
 ```
 
-## 画面
+## 📸 スクリーンショット
 
-以下は架空のテストデータを使った画面です。
+[1.1.1 Preview](https://github.com/specialMinority/kashimo/releases/tag/v1.1.1-preview) の実行画面です。下部タブのアイコン修正を反映しています。画像をクリックすると拡大できます。
 
-| ホーム | 記録 | 一括削除 |
-| --- | --- | --- |
-| ![ホーム](docs/home-mobile.png) | ![記録](docs/list-mobile.png) | ![一括削除](docs/bulk-delete-mobile.png) |
+### Android
+
+Android API 35 エミュレーターで撮影した、取引登録前の画面です。
+
+| ホーム | 記録 | 取引の登録 | 設定 |
+|:---:|:---:|:---:|:---:|
+| [<img src="assets/screenshots/v1.1.1/android-home.png" alt="Android 1.1.1のホーム画面" width="180" />](assets/screenshots/v1.1.1/android-home.png) | [<img src="assets/screenshots/v1.1.1/android-list.png" alt="Android 1.1.1の記録一覧・空の状態" width="180" />](assets/screenshots/v1.1.1/android-list.png) | [<img src="assets/screenshots/v1.1.1/android-add.png" alt="Android 1.1.1の取引登録フォーム" width="180" />](assets/screenshots/v1.1.1/android-add.png) | [<img src="assets/screenshots/v1.1.1/android-settings.png" alt="Android 1.1.1の設定画面" width="180" />](assets/screenshots/v1.1.1/android-settings.png) |
+
+### Web / PWA
+
+モバイルサイズのブラウザーで撮影した画面です。人物名・金額は説明用の架空データです。
+
+| 取引一覧 | 一括削除の確認 |
+|:---:|:---:|
+| [<img src="assets/screenshots/v1.1.1/web-list.png" alt="サンプルデータを表示したWebの取引一覧" width="240" />](assets/screenshots/v1.1.1/web-list.png) | [<img src="assets/screenshots/v1.1.1/web-bulk-delete.png" alt="選択した4件の一括削除を確認する画面" width="240" />](assets/screenshots/v1.1.1/web-bulk-delete.png) |
+
+撮影日: 2026年9月13日（KST/JST）。[キャプチャ環境と元データ](assets/screenshots/v1.1.1/README.md)
 
 ## 作業記録
 
