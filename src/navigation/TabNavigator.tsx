@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,8 +25,11 @@ export default function TabNavigator() {
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
         tabBarHideOnKeyboard: true,
         tabBarLabelPosition: 'below-icon',
-        tabBarIcon: ({ color, focused }) => <View style={{ paddingHorizontal: 14, paddingVertical: 4, borderRadius: borderRadius.round, backgroundColor: route.name === 'Add' ? colors.primary.main : focused ? colors.surface.sage : colors.surface.transparent }}>
-            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name={icons[route.name]} color={route.name === 'Add' ? colors.neutral.white : color} size={22} />
+        // The navigator defaults to a 31px slot. Horizontal padding alone squeezes
+        // Android's Text-based glyph to 3px; reserve the full pill on both layers.
+        tabBarIconStyle: styles.iconFrame,
+        tabBarIcon: ({ color, focused }) => <View style={[styles.iconFrame, { backgroundColor: route.name === 'Add' ? colors.primary.main : focused ? colors.surface.sage : colors.surface.transparent }]}>
+            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" allowFontScaling={false} style={styles.iconGlyph} name={icons[route.name]} color={route.name === 'Add' ? colors.neutral.white : color} size={22} />
         </View>,
     })}>
         <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'ホーム' }} />
@@ -35,3 +38,8 @@ export default function TabNavigator() {
         <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: '設定' }} />
     </Tab.Navigator>;
 }
+
+const styles = StyleSheet.create({
+    iconFrame: { width: 50, height: 32, flexShrink: 0, borderRadius: borderRadius.round, alignItems: 'center', justifyContent: 'center' },
+    iconGlyph: { width: 24, height: 24, lineHeight: 24, textAlign: 'center', includeFontPadding: false },
+});

@@ -9,6 +9,8 @@
     "tests",
     "dist",
     "android",
-    "ios"
+    "ios",
+    "artifacts",
+    "test-results"
   ]
 }

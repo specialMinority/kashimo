@@ -2,7 +2,7 @@
   "expo": {
     "name": "kashimo",
     "slug": "kashimo",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/branding/icon.png",
     "scheme": "kashimo",
@@ -23,7 +23,8 @@
         "backgroundColor": "#F6F3EC"
       },
       "package": "com.kashimo.app",
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro",

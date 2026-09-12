@@ -1,6 +1,6 @@
 {
   "name": "kashimo",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "homepage": "https://specialMinority.github.io/kashimo",
   "main": "index.ts",
   "scripts": {
