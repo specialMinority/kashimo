@@ -54,6 +54,8 @@ jobs:
           java-version: 17
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
       - run: npm ci --include=dev --no-audit --no-fund
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install

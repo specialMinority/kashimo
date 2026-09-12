@@ -1,3 +1,4 @@
+import appConfig from '../../app.json';
 import { AppText as Text } from '../components/AppText';
 /**
  * Settings Screen
@@ -517,7 +518,7 @@ export default function SettingsScreen() {
                 <View style={styles.card}>
                     <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.neutral.border, paddingBottom: 15 }]}>
                         <Text style={styles.infoLabel}>バージョン</Text>
-                        <Text style={styles.infoValue}>1.1.0</Text>
+                        <Text style={styles.infoValue}>{appConfig.expo.version}</Text>
                     </View>
 
                     <TouchableOpacity accessibilityRole="button"
