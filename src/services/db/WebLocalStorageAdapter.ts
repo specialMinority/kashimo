@@ -12,19 +12,18 @@ export class WebLocalStorageAdapter implements DatabaseAdapter {
     }
 
     private getStoredTransactions(): Transaction[] {
-        if (typeof localStorage === 'undefined') return [];
+        if (typeof localStorage === 'undefined') throw new Error('Storage unavailable');
         const json = localStorage.getItem(this.STORAGE_KEY);
         if (!json) return [];
-        try {
-            return JSON.parse(json) as Transaction[];
-        } catch (e) {
-            console.error('Failed to parse localStorage', e);
-            return [];
+        const data: unknown = JSON.parse(json);
+        if (!Array.isArray(data) || data.some(item => !item || typeof item.id !== 'string')) {
+            throw new Error('Invalid stored transactions. Restore a valid backup before editing.');
         }
+        return data as Transaction[];
     }
 
     private saveStoredTransactions(transactions: Transaction[]): void {
-        if (typeof localStorage === 'undefined') return;
+        if (typeof localStorage === 'undefined') throw new Error('Storage unavailable');
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(transactions));
     }
 
@@ -87,9 +86,15 @@ export class WebLocalStorageAdapter implements DatabaseAdapter {
     }
 
     async removeTransaction(id: string): Promise<void> {
-        let transactions = this.getStoredTransactions();
-        transactions = transactions.filter(t => t.id !== id);
-        this.saveStoredTransactions(transactions);
+        return this.removeTransactions([id]);
+    }
+
+    async removeTransactions(ids: readonly string[]): Promise<void> {
+        if (ids.length === 0) return;
+        const selected = new Set(ids);
+        const remaining = this.getStoredTransactions().filter(t => !selected.has(t.id));
+        // A single setItem is atomic: quota / permission errors leave the old value intact.
+        this.saveStoredTransactions(remaining);
     }
 
     async markTransactionComplete(id: string): Promise<void> {

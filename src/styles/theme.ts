@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 /**
  * Kashimo Design System
  * P2P 금전거래 관리 앱 디자인 토큰
@@ -6,42 +7,54 @@
 export const colors = {
     // Primary Colors
     primary: {
-        main: '#4ECDC4',      // 민트 그린 - 메인 컬러
-        light: '#7EDDD6',
-        dark: '#3BA99E',
+        main: '#3F6154',
+        light: '#E8EEE7',
+        dark: '#29473C',
     },
 
     // Accent Colors
     accent: {
-        coral: '#FF6B6B',     // 코랄 핑크 - 경고/긴급
-        coralLight: '#FF8E8E',
-        coralDark: '#E55555',
+        coral: '#A45D49',
+        coralLight: '#F6E8DF',
+        coralDark: '#884333',
     },
 
     // Semantic Colors
     semantic: {
-        success: '#4CAF50',
-        warning: '#FFC107',
-        error: '#F44336',
-        info: '#2196F3',
+        success: '#3F6154',
+        warning: '#8D651F',
+        error: '#AD403C',
+        info: '#486F8A',
     },
 
     // Money Colors
     money: {
-        receive: '#4ECDC4',   // 받을 돈 - 민트
-        pay: '#FF6B6B',       // 갚을 돈 - 코랄
+        receive: '#3F6154',
+        pay: '#A45D49',
     },
 
     // Neutral Colors
     neutral: {
         white: '#FFFFFF',
-        background: '#F8FAFA',
-        card: '#FFFFFF',
-        border: '#E0E0E0',
-        textPrimary: '#1A1A1A',
-        textSecondary: '#666666',
-        textTertiary: '#999999',
-        disabled: '#CCCCCC',
+        background: '#F6F3EC',
+        card: '#FFFDF9',
+        border: '#E6E2D9',
+        textPrimary: '#2F3933',
+        textSecondary: '#657067',
+        textTertiary: '#747A71',
+        disabled: '#C6CCC5',
+    },
+
+    surface: {
+        sage: '#E8EEE7',
+        peach: '#F6E8DF',
+        cream: '#EEE9DF',
+        danger: '#FBEDEA',
+        glass: 'rgba(255,253,249,0.96)',
+        veil: 'rgba(246,243,236,0.84)',
+        scrim: 'rgba(32,43,37,0.48)',
+        whiteMuted: 'rgba(255,255,255,0.78)',
+        transparent: 'transparent',
     },
 
     // Dark Mode Colors
@@ -56,7 +69,7 @@ export const colors = {
 
 export const typography = {
     fontFamily: {
-        regular: 'System',
+        regular: Platform.OS === 'web' ? 'Arial, "Yu Gothic UI", Meiryo, sans-serif' : Platform.OS === 'android' ? 'sans-serif' : 'System',
         medium: 'System',
         bold: 'System',
         // 일본어 폰트는 Noto Sans JP 사용 예정
@@ -115,33 +128,33 @@ export const spacing = {
 };
 
 export const borderRadius = {
-    sm: 4,
-    md: 8,
-    lg: 12,
-    xl: 16,
+    sm: 8,
+    md: 14,
+    lg: 22,
+    xl: 28,
     round: 9999,
 };
 
 export const shadows = {
     sm: {
-        shadowColor: '#000',
+        shadowColor: '#29473C',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
         elevation: 2,
     },
     md: {
-        shadowColor: '#000',
+        shadowColor: '#29473C',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
         elevation: 4,
     },
     lg: {
-        shadowColor: '#000',
+        shadowColor: '#29473C',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowOpacity: 0.14,
+        shadowRadius: 20,
         elevation: 8,
     },
 };

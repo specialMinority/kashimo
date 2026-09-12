@@ -1,5 +1,6 @@
+import { AppText as Text } from './AppText';
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { colors, borderRadius, spacing, typography, shadows } from '../styles/theme';
 
 export interface AlertButton {
@@ -33,16 +34,18 @@ export const CustomAlertModal: React.FC<CustomAlertModalProps> = ({
             <TouchableWithoutFeedback onPress={onDismiss}>
                 <View style={styles.overlay}>
                     <TouchableWithoutFeedback>
-                        <View style={styles.alertBox}>
-                            <Text style={styles.title}>{title}</Text>
+                        <View style={styles.alertBox} accessibilityViewIsModal>
+                            <Text accessibilityRole="header" style={styles.title}>{title}</Text>
                             {message && <Text style={styles.message}>{message}</Text>}
 
-                            <View style={styles.buttonContainer}>
+                            <View style={[styles.buttonContainer, buttons.length > 2 && { flexDirection: 'column' }]}>
                                 {buttons.map((btn, index) => (
                                     <TouchableOpacity
                                         key={index}
+                                        accessibilityRole="button"
                                         style={[
                                             styles.button,
+                                            buttons.length > 2 && { flex: 0, width: '100%' },
                                             btn.style === 'destructive' && styles.buttonDestructive,
                                             btn.style === 'cancel' && styles.buttonCancel,
                                             // Add spacing if not last
@@ -71,14 +74,14 @@ export const CustomAlertModal: React.FC<CustomAlertModalProps> = ({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: colors.surface.scrim,
         justifyContent: 'center',
         alignItems: 'center',
         padding: spacing.xl,
     },
     alertBox: {
         width: '100%',
-        maxWidth: 320,
+        maxWidth: 390,
         backgroundColor: colors.neutral.white,
         borderRadius: borderRadius.lg,
         padding: spacing.lg,
@@ -87,11 +90,13 @@ const styles = StyleSheet.create({
     },
     title: {
         ...typography.subtitle1,
+        color: colors.neutral.textPrimary,
         marginBottom: spacing.sm,
         textAlign: 'center',
     },
     message: {
-        ...typography.body1,
+        fontSize: 14,
+        lineHeight: 24,
         color: colors.neutral.textSecondary,
         marginBottom: spacing.lg,
         textAlign: 'center',

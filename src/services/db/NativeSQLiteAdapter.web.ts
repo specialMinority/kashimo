@@ -9,6 +9,7 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
     async getPendingTransactions(): Promise<Transaction[]> { throw new Error('Not supported'); }
     async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> { throw new Error('Not supported'); }
     async removeTransaction(id: string): Promise<void> { throw new Error('Not supported'); }
+    async removeTransactions(ids: readonly string[]): Promise<void> { throw new Error('Not supported'); }
     async markTransactionComplete(id: string): Promise<void> { throw new Error('Not supported'); }
     async revertTransactionStatus(id: string): Promise<void> { throw new Error('Not supported'); }
     async getDashboardSummary(): Promise<DashboardSummary> { throw new Error('Not supported'); }

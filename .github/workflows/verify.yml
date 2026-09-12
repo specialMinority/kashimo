@@ -1,0 +1,67 @@
+name: Verify and build Kashimo
+
+on:
+  push:
+    branches: [master, feature/cat-design-bulk-delete]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kashimo-web
+          path: dist
+          include-hidden-files: true
+
+  android:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: "1"
+      NODE_ENV: production
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci --include=dev --no-audit --no-fund
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
+      - name: Build installable preview APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,x86_64
+      # Expo's generated debug keystore signs this preview. Use the owner's EAS release key for Play.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kashimo-android-preview
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error

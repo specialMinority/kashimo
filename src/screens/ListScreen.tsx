@@ -1,531 +1,237 @@
-/**
- * List Screen - 거래 목록
- * 모든 거래를 필터별로 표시
- */
-
-import React, { useState, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    ActivityIndicator,
-    Alert,
-    RefreshControl,
-    TouchableOpacity,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { AppText as Text } from '../components/AppText';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius, shadows, typography, formatCurrency, getDDay } from '../styles/theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Transaction, TransactionType } from '../types';
-import { TRANSACTION_STATUS_LABELS, TRANSACTION_TYPE_LABELS } from '../constants';
-import { getAllTransactions, removeTransaction, revertTransactionStatus, updateTransaction } from '../services/database';
-import { cancelTransactionReminders } from '../services/notifications';
-import { CustomAlertModal } from '../components/CustomAlertModal';
+import { getAllTransactions, markTransactionComplete, removeTransactions, revertTransactionStatus } from '../services/database';
+import { cancelTransactionReminders, scheduleTransactionReminders } from '../services/notifications';
+import { AlertButton, CustomAlertModal } from '../components/CustomAlertModal';
+import { CatEmpty } from '../components/Brand';
+import { TransactionRow } from '../components/TransactionRow';
+import { borderRadius, colors, spacing } from '../styles/theme';
+import type { RootStackParamList } from '../../App';
 
-// 네비게이션 타입
-type RootStackParamList = {
-    Main: undefined;
-    Detail: { transactionId: string };
-    Edit: { transactionId: string };
-};
-
-type FilterType = 'all' | 'lent' | 'borrowed';
+type Filter = 'all' | TransactionType;
+const filters: { value: Filter; label: string }[] = [
+    { value: 'all', label: 'すべて' }, { value: 'lent', label: '貸した' }, { value: 'borrowed', label: '借りた' },
+];
 
 export default function ListScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const [filter, setFilter] = useState<FilterType>('all');
+    const [filter, setFilter] = useState<Filter>('all');
     const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [refreshing, setRefreshing] = useState(false);
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [selecting, setSelecting] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const busyRef = useRef(false);
+    const [loadError, setLoadError] = useState(false);
+    const [notice, setNotice] = useState('');
+    const [alert, setAlert] = useState<{ visible: boolean; title: string; message: string; buttons: AlertButton[] }>({ visible: false, title: '', message: '', buttons: [] });
+    const closeAlert = () => setAlert(prev => ({ ...prev, visible: false }));
+    const showError = (title: string, message: string) => setAlert({ visible: true, title, message, buttons: [{ text: '確認', onPress: closeAlert }] });
 
-    // 🔥 SQLite/Local DB에서 데이터 로드
     const loadData = useCallback(async () => {
         try {
             const data = await getAllTransactions();
             setTransactions(data);
-            console.log('✅ Local Transactions loaded:', data.length, 'items');
-        } catch (error) {
-            console.error('❌ Failed to load transactions:', error);
+            setSelected(prev => new Set([...prev].filter(id => data.some(t => t.id === id))));
+            setLoadError(false);
+        } catch {
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
     }, []);
 
-    // 🔄 탭 포커스 시 데이터 새로고침
-    useFocusEffect(
-        useCallback(() => {
-            loadData();
-        }, [loadData])
-    );
+    useFocusEffect(useCallback(() => {
+        void loadData();
+        return () => { setSelecting(false); setSelected(new Set()); };
+    }, [loadData]));
 
-    const filteredTransactions = transactions.filter(t => {
-        if (filter === 'all') return true;
-        return t.type === filter;
+    const visible = transactions.filter(t => filter === 'all' || t.type === filter);
+    const allSelected = visible.length > 0 && visible.every(t => selected.has(t.id));
+
+    const toggle = (id: string) => {
+        if (busyRef.current) return;
+        setSelected(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const deleteSelected = (ids: string[]) => {
+        if (!ids.length || busyRef.current) return;
+        const targets = [...ids]; // Freeze the exact reviewed selection, including completed records.
+        setAlert({
+            visible: true,
+            title: targets.length + '件の取引を削除しますか？',
+            message: '選択した取引だけを削除します。\nこの操作は取り消せません。必要な記録は先にバックアップしてください。',
+            buttons: [
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
+                { text: targets.length + '件を削除', style: 'destructive', onPress: async () => {
+                    if (busyRef.current) return;
+                    busyRef.current = true;
+                    setBusy(true);
+                    closeAlert();
+                    try {
+                        const result = await removeTransactions(targets);
+                        const removed = new Set(targets);
+                        setTransactions(prev => prev.filter(t => !removed.has(t.id)));
+                        setSelected(new Set());
+                        setSelecting(false);
+                        setNotice(targets.length + '件の取引を削除しました');
+                        if (result.reminderCleanupFailed) {
+                            showError('取引を削除しました', '一部の通知を解除できませんでした。次回起動時に再試行します。');
+                        }
+                    } catch {
+                        showError('削除できませんでした', '取引は削除されていません。保存先を確認して、もう一度お試しください。');
+                    } finally {
+                        busyRef.current = false;
+                        setBusy(false);
+                    }
+                } },
+            ],
+        });
+    };
+
+    const changeStatus = (t: Transaction) => {
+        const complete = t.status !== 'completed';
+        setAlert({
+            visible: true, title: complete ? '精算完了' : '精算取消',
+            message: complete ? t.counterparty + 'さんとの取引を精算済みにしますか？' : '未精算の状態に戻しますか？',
+            buttons: [
+                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
+                { text: complete ? '完了にする' : '戻す', onPress: async () => {
+                    if (busyRef.current) return;
+                    busyRef.current = true; setBusy(true); closeAlert();
+                    try {
+                        if (complete) {
+                            await markTransactionComplete(t.id);
+                            await cancelTransactionReminders(t.id);
+                        } else {
+                            await revertTransactionStatus(t.id);
+                            if (t.dueDate) await scheduleTransactionReminders(t.id, t.counterparty, t.amount, new Date(t.dueDate + 'T00:00:00'), t.type);
+                        }
+                        await loadData();
+                        setNotice(complete ? '精算済みにしました' : '未精算に戻しました');
+                    } catch { showError('処理できませんでした', 'もう一度お試しください。'); }
+                    finally { busyRef.current = false; setBusy(false); }
+                } },
+            ],
+        });
+    };
+
+    const showActions = (t: Transaction) => setAlert({
+        visible: true, title: t.counterparty, message: '取引の操作を選んでください。',
+        buttons: [
+            { text: t.status === 'completed' ? '精算を取り消す' : '精算を完了する', onPress: () => changeStatus(t) },
+            { text: '編集する', onPress: () => { closeAlert(); navigation.navigate('Edit', { transactionId: t.id }); } },
+            { text: '削除する', style: 'destructive', onPress: () => deleteSelected([t.id]) },
+            { text: '閉じる', style: 'cancel', onPress: closeAlert },
+        ],
     });
 
-    const onRefresh = async () => {
-        setRefreshing(true);
-        await loadData();
-        setRefreshing(false);
+    const renderRow = ({ item }: { item: Transaction }) => {
+        const row = <TransactionRow transaction={item} selecting={selecting} selected={selected.has(item.id)} disabled={busy}
+            onPress={() => selecting ? toggle(item.id) : navigation.navigate('Detail', { transactionId: item.id })}
+            onMore={() => showActions(item)} />;
+        if (selecting) return row;
+        return <Swipeable enabled={!busy} overshootRight={false} renderRightActions={() => <View style={styles.swipeActions}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.counterparty + 'の精算状態を変更'} style={styles.swipeButton} onPress={() => changeStatus(item)} disabled={busy}>
+                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name={item.status === 'completed' ? 'refresh' : 'checkmark'} color={colors.neutral.white} size={22} />
+                <Text style={styles.swipeText}>{item.status === 'completed' ? '戻す' : '完了'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.counterparty + 'を編集'} style={styles.swipeButton} onPress={() => navigation.navigate('Edit', { transactionId: item.id })} disabled={busy}>
+                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="create-outline" color={colors.neutral.white} size={21} /><Text style={styles.swipeText}>編集</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.counterparty + 'を削除'} style={[styles.swipeButton, styles.swipeDelete]} onPress={() => deleteSelected([item.id])} disabled={busy}>
+                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="trash-outline" color={colors.neutral.white} size={21} /><Text style={styles.swipeText}>削除</Text>
+            </TouchableOpacity>
+        </View>}>{row}</Swipeable>;
     };
 
-    // Custom Alert State
-    const [alertConfig, setAlertConfig] = useState<{
-        visible: boolean;
-        title: string;
-        message?: string;
-        buttons: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[];
-    }>({ visible: false, title: '', buttons: [] });
-
-    const showAlert = (title: string, message: string, buttons: any[]) => {
-        setAlertConfig({ visible: true, title, message, buttons });
-    };
-
-    const closeAlert = () => {
-        setAlertConfig(prev => ({ ...prev, visible: false }));
-    };
-
-    // 거래 클릭 시 상세 화면으로 이동
-    const handleTransactionPress = (transactionId: string) => {
-        navigation.navigate('Detail', { transactionId });
-    };
-
-    // 거래 삭제 처리
-    const handleDelete = async (transaction: Transaction) => {
-        showAlert(
-            '削除確認',
-            'この取引を削除しますか？\nこの操作は取り消せません。',
-            [
-                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
-                {
-                    text: '削除する',
-                    style: 'destructive',
-                    onPress: async () => {
-                        closeAlert();
-                        try {
-                            await cancelTransactionReminders(transaction.id);
-                            await removeTransaction(transaction.id);
-                            // 목록에서 제거
-                            setTransactions(prev => prev.filter(t => t.id !== transaction.id));
-                            // Alert.alert('完了', '取引を削除しました');
-                        } catch (error) {
-                            console.error(error);
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
-    // 거래 정산 취소 처리
-    const handleRevert = async (transaction: Transaction) => {
-        showAlert(
-            '精算取消',
-            '未精算状態に戻しますか？',
-            [
-                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
-                {
-                    text: '戻す',
-                    onPress: async () => {
-                        closeAlert();
-                        try {
-                            await revertTransactionStatus(transaction.id);
-                            // 목록 업데이트 (낙관적 or reload)
-                            await loadData();
-                            // Alert.alert('完了', '未精算状態に戻しました');
-                        } catch (error) {
-                            console.error(error);
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
-    // 거래 완료 처리
-    const handleComplete = async (transaction: Transaction) => {
-        showAlert(
-            '完了確認',
-            'この取引を完了済み(返済済み)にしますか？',
-            [
-                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
-                {
-                    text: '完了にする',
-                    onPress: async () => {
-                        closeAlert();
-                        try {
-                            await updateTransaction(transaction.id, { status: 'completed' });
-                            await cancelTransactionReminders(transaction.id);
-
-                            // 목록 업데이트
-                            await loadData();
-
-                            // 🚀 완료 팝업 표시
-                            setTimeout(() => {
-                                showAlert('成功', '取引を完了済みにしました！', [{ text: '確認', onPress: closeAlert }]);
-                            }, 300);
-                        } catch (error) {
-                            console.error(error);
-                            showAlert('エラー', '処理に失敗しました', [{ text: 'OK', onPress: closeAlert }]);
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
-    const renderRightActions = (progress: any, dragX: any, item: Transaction) => {
-        const isCompleted = item.status === 'completed';
-
-        if (isCompleted) {
-            return (
-                <View style={[styles.actionContainer, { width: 140 }]}>
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.revertAction]}
-                        onPress={() => handleRevert(item)}
-                    >
-                        <Ionicons name="refresh-circle" size={24} color={colors.neutral.textSecondary} />
-                        <Text style={[styles.actionText, { color: colors.neutral.textSecondary }]}>戻す</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.deleteAction]}
-                        onPress={() => handleDelete(item)}
-                    >
-                        <Ionicons name="trash-outline" size={24} color={colors.neutral.white} />
-                        <Text style={styles.actionText}>削除</Text>
-                    </TouchableOpacity>
-                </View>
-            );
-        }
-
-        return (
-            <View style={[styles.actionContainer, { width: 210 }]}>
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.completeAction]}
-                    onPress={() => handleComplete(item)}
-                >
-                    <Ionicons name="checkmark-circle-outline" size={24} color={colors.neutral.white} />
-                    <Text style={styles.actionText}>完了</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.editAction]}
-                    onPress={() => navigation.navigate('Edit', { transactionId: item.id } as any)}
-                >
-                    <Ionicons name="create-outline" size={24} color={colors.neutral.white} />
-                    <Text style={styles.actionText}>編集</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.deleteAction]}
-                    onPress={() => handleDelete(item)}
-                >
-                    <Ionicons name="trash-outline" size={24} color={colors.neutral.white} />
-                    <Text style={styles.actionText}>削除</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    };
-
-    const renderTransaction = ({ item }: { item: Transaction }) => {
-        const isCompleted = item.status === 'completed';
-        const isOverdue = !isCompleted && item.dueDate && new Date(item.dueDate) < new Date();
-
-        return (
-            <Swipeable
-                key={item.id}
-                renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
-                friction={2}
-                rightThreshold={40}
-            >
-                <TouchableOpacity
-                    style={[
-                        styles.transactionItem,
-                        isCompleted && styles.completedItem
-                    ]}
-                    onPress={() => handleTransactionPress(item.id)}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.transactionLeft}>
-                        <View style={styles.nameRow}>
-                            <Text style={[
-                                styles.counterparty,
-                                isCompleted && styles.completedText
-                            ]}>
-                                {item.counterparty}
-                            </Text>
-                            <View style={[
-                                styles.typeBadge,
-                                { backgroundColor: item.type === 'lent' ? colors.primary.light : colors.accent.coralLight }
-                            ]}>
-                                <Text style={styles.typeText}>
-                                    {TRANSACTION_TYPE_LABELS[item.type]}
-                                </Text>
-                            </View>
-                        </View>
-                        {item.memo && (
-                            <Text style={styles.memo}>{item.memo}</Text>
-                        )}
-                        <Text style={styles.date}>
-                            期限: {item.dueDate ? new Date(item.dueDate).toLocaleDateString('ja-JP') : '設定なし'}
-                        </Text>
-                    </View>
-
-                    <View style={styles.transactionRight}>
-                        <Text style={[
-                            styles.amount,
-                            { color: item.type === 'lent' ? colors.primary.main : colors.accent.coral },
-                            isCompleted && styles.completedAmount
-                        ]}>
-                            {item.type === 'lent' ? '+' : '-'}{formatCurrency(item.amount)}
-                        </Text>
-
-                        {isCompleted ? (
-                            <View style={[styles.statusBadge, { backgroundColor: colors.semantic.success }]}>
-                                <Text style={styles.statusText}>{TRANSACTION_STATUS_LABELS.completed}</Text>
-                            </View>
-                        ) : isOverdue ? (
-                            <View style={[styles.statusBadge, { backgroundColor: colors.semantic.error }]}>
-                                <Text style={styles.statusText}>{TRANSACTION_STATUS_LABELS.overdue}</Text>
-                            </View>
-                        ) : (
-                            item.dueDate ? (
-                                <View style={[
-                                    styles.dDayBadge,
-                                    { backgroundColor: getDDayColor(item.dueDate) }
-                                ]}>
-                                    <Text style={styles.dDayText}>{getDDay(new Date(item.dueDate))}</Text>
-                                </View>
-                            ) : (
-                                <View style={[styles.statusBadge, { backgroundColor: colors.neutral.disabled }]}>
-                                    <Text style={styles.statusText}>期限なし</Text>
-                                </View>
-                            )
-                        )}
-                    </View>
-                </TouchableOpacity>
-            </Swipeable>
-        );
-
-    };
-
-    return (
-        <View style={styles.container}>
-            {/* 필터 탭 */}
-            <View style={styles.filterContainer}>
-                <TouchableOpacity
-                    style={[styles.filterButton, filter === 'all' && styles.filterActive]}
-                    onPress={() => setFilter('all')}
-                >
-                    <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-                        すべて
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.filterButton, filter === 'lent' && styles.filterActive]}
-                    onPress={() => setFilter('lent')}
-                >
-                    <Text style={[styles.filterText, filter === 'lent' && styles.filterTextActive]}>
-                        貸した
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.filterButton, filter === 'borrowed' && styles.filterActive]}
-                    onPress={() => setFilter('borrowed')}
-                >
-                    <Text style={[styles.filterText, filter === 'borrowed' && styles.filterTextActive]}>
-                        借りた
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* 거래 목록 */}
-            <FlatList
-                data={filteredTransactions}
-                renderItem={renderTransaction}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContainer}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
-                ListEmptyComponent={
-                    <View style={styles.emptyState}>
-                        <Ionicons name="document-text-outline" size={48} color={colors.neutral.disabled} />
-                        <Text style={styles.emptyText}>取引がありません</Text>
-                    </View>
-                }
-            />
-            <CustomAlertModal
-                visible={alertConfig.visible}
-                title={alertConfig.title}
-                message={alertConfig.message}
-                buttons={alertConfig.buttons}
-                onDismiss={closeAlert}
-            />
+    return <View style={styles.container}>
+        <View style={styles.top}>
+            <View><Text style={styles.eyebrow}>YOUR RECORDS</Text><Text accessibilityRole="header" style={styles.title}>お金の記録</Text></View>
+            <TouchableOpacity accessibilityRole="button" disabled={busy || loading || loadError || (!selecting && !visible.length)}
+                accessibilityState={{ disabled: busy || loading || loadError || (!selecting && !visible.length) }}
+                style={[styles.selectButton, (busy || loading || loadError || (!selecting && !visible.length)) && styles.disabled]}
+                onPress={() => { setSelecting(!selecting); setSelected(new Set()); setNotice(''); }}>
+                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name={selecting ? 'close-outline' : 'checkbox-outline'} size={17} color={colors.primary.main} />
+                <Text style={styles.selectText}>{selecting ? 'キャンセル' : '選択'}</Text>
+            </TouchableOpacity>
         </View>
-    );
-}
-
-function getDDayColor(dueDate: string): string {
-    const days = Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    if (days <= 1) return colors.accent.coral;
-    if (days <= 3) return colors.semantic.warning;
-    return colors.primary.main;
+        <View style={styles.filters}>
+            {filters.map(f => <TouchableOpacity accessibilityRole="tab" aria-selected={f.value === filter} accessibilityState={{ selected: f.value === filter, disabled: busy }} key={f.value} disabled={busy}
+                onPress={() => { setFilter(f.value); setSelected(new Set()); setNotice(''); }}
+                style={[styles.filter, filter === f.value && styles.filterActive]}>
+                <Text style={[styles.filterText, filter === f.value && styles.filterActiveText]}>{f.label}</Text>
+            </TouchableOpacity>)}
+        </View>
+        <View style={styles.toolbar}>
+            <Text style={styles.meta}>{visible.length}件の記録{selecting ? ' · ' + selected.size + '件を選択中' : ''}</Text>
+            {selecting && <TouchableOpacity accessibilityRole="checkbox" accessibilityLabel="表示中の取引をすべて選択" aria-checked={allSelected} accessibilityState={{ checked: allSelected, disabled: busy || !visible.length }} disabled={busy || !visible.length}
+                style={styles.allButton} onPress={() => setSelected(allSelected ? new Set() : new Set(visible.map(t => t.id)))}>
+                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name={allSelected ? 'checkbox' : 'square-outline'} size={18} color={colors.primary.main} />
+                <Text style={styles.selectText}>{allSelected ? '選択を解除' : 'すべて選択'}</Text>
+            </TouchableOpacity>}
+        </View>
+        {notice !== '' && <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
+        {loadError ? <View style={styles.error}>
+            <Text style={styles.errorText}>記録を読み込めませんでした。保存先を確認してください。</Text>
+            <TouchableOpacity accessibilityRole="button" style={styles.selectButton} onPress={loadData}><Text style={styles.selectText}>再読み込み</Text></TouchableOpacity>
+        </View> : loading ? <ActivityIndicator style={styles.loader} color={colors.primary.main} size="large" /> : <FlatList
+            data={visible} renderItem={renderRow} keyExtractor={t => t.id} extraData={{ selected, selecting, busy }}
+            contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl enabled={!busy} refreshing={refreshing} tintColor={colors.primary.main} onRefresh={async () => { if (busyRef.current) return; setRefreshing(true); await loadData(); setRefreshing(false); }} />}
+            ListEmptyComponent={<CatEmpty title="記録はまだありません" description={filter === 'all' ? '小さな貸し借りも、ここに残しておこう。' : 'この種類の取引はありません。'} />}
+        />}
+        {selecting && <View style={styles.bulkBar}>
+            <View style={styles.bulkDescription}><Text style={styles.bulkCount}>{selected.size}件を選択中</Text><Text style={styles.meta}>表示中の記録が対象です</Text></View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="選択した取引を削除" accessibilityState={{ disabled: !selected.size || busy }} disabled={!selected.size || busy}
+                style={[styles.deleteButton, (!selected.size || busy) && styles.disabled]} onPress={() => deleteSelected([...selected])}>
+                {busy ? <ActivityIndicator color={colors.neutral.white} /> : <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="trash-outline" size={18} color={colors.neutral.white} />}
+                <Text style={styles.deleteText}>{busy ? '削除中…' : '選択した取引を削除'}</Text>
+            </TouchableOpacity>
+        </View>}
+        <CustomAlertModal visible={alert.visible} title={alert.title} message={alert.message} buttons={alert.buttons} onDismiss={closeAlert} />
+    </View>;
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.neutral.background,
-    },
-    filterContainer: {
-        flexDirection: 'row',
-        padding: spacing.md,
-        backgroundColor: colors.neutral.card,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.neutral.border,
-    },
-    filterButton: {
-        flex: 1,
-        paddingVertical: spacing.sm,
-        alignItems: 'center',
-        borderRadius: borderRadius.md,
-    },
-    filterActive: {
-        backgroundColor: colors.primary.main,
-    },
-    filterText: {
-        fontSize: typography.fontSize.md,
-        color: colors.neutral.textSecondary,
-        fontWeight: '500',
-    },
-    filterTextActive: {
-        color: colors.neutral.white,
-    },
-    listContainer: {
-        padding: spacing.md,
-    },
-    transactionItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: colors.neutral.card,
-        borderRadius: borderRadius.md,
-        padding: spacing.md,
-    },
-    completedItem: {
-        opacity: 0.6,
-    },
-    transactionLeft: {
-        flex: 1,
-    },
-    nameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    counterparty: {
-        fontSize: typography.fontSize.md,
-        fontWeight: '600',
-        color: colors.neutral.textPrimary,
-    },
-    completedText: {
-        textDecorationLine: 'line-through',
-    },
-    typeBadge: {
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: borderRadius.sm,
-    },
-    typeText: {
-        fontSize: typography.fontSize.xs,
-        color: colors.neutral.white,
-        fontWeight: '500',
-    },
-    memo: {
-        fontSize: typography.fontSize.sm,
-        color: colors.neutral.textTertiary,
-        marginTop: spacing.xs,
-    },
-    date: {
-        fontSize: typography.fontSize.xs,
-        color: colors.neutral.textTertiary,
-        marginTop: spacing.xs,
-    },
-    transactionRight: {
-        alignItems: 'flex-end',
-    },
-    amount: {
-        fontSize: typography.fontSize.lg,
-        fontWeight: 'bold',
-    },
-    completedAmount: {
-        textDecorationLine: 'line-through',
-    },
-    dDayBadge: {
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: borderRadius.round,
-        marginTop: spacing.xs,
-    },
-    dDayText: {
-        fontSize: typography.fontSize.xs,
-        color: colors.neutral.white,
-        fontWeight: 'bold',
-    },
-    statusBadge: {
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: borderRadius.round,
-        marginTop: spacing.xs,
-    },
-    statusText: {
-        fontSize: typography.fontSize.xs,
-        color: colors.neutral.white,
-        fontWeight: 'bold',
-    },
-    emptyState: {
-        alignItems: 'center',
-        padding: spacing.xxl,
-    },
-    emptyText: {
-        marginTop: spacing.md,
-        color: colors.neutral.textTertiary,
-    },
-    swipeableContainer: {
-        marginBottom: spacing.sm,
-        ...shadows.sm,
-        backgroundColor: colors.neutral.card,
-        borderRadius: borderRadius.md,
-    },
-    actionContainer: {
-        flexDirection: 'row',
-        width: 140,
-    },
-    actionButton: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    completeAction: {
-        backgroundColor: colors.semantic.success,
-    },
-    editAction: {
-        backgroundColor: colors.primary.main,
-    },
-    revertAction: {
-        backgroundColor: colors.neutral.border,
-    },
-    deleteAction: {
-        backgroundColor: colors.semantic.error,
-        borderTopRightRadius: borderRadius.md,
-        borderBottomRightRadius: borderRadius.md,
-    },
-    actionText: {
-        color: colors.neutral.white,
-        fontSize: 10,
-        fontWeight: 'bold',
-        marginTop: 4,
-    },
+    container: { flex: 1, backgroundColor: colors.neutral.background },
+    top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm },
+    eyebrow: { fontSize: 10, letterSpacing: 2, color: colors.primary.main, fontWeight: '700', marginBottom: spacing.sm },
+    title: { fontSize: 27, fontWeight: '700', color: colors.neutral.textPrimary },
+    selectButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, minHeight: 44, borderRadius: borderRadius.round, borderWidth: 1, borderColor: colors.neutral.border, backgroundColor: colors.neutral.card },
+    selectText: { fontSize: 12, fontWeight: '600', color: colors.primary.main },
+    filters: { flexDirection: 'row', marginHorizontal: spacing.lg, backgroundColor: colors.surface.cream, padding: spacing.xs, borderRadius: borderRadius.round },
+    filter: { flex: 1, minHeight: 42, justifyContent: 'center', alignItems: 'center', borderRadius: borderRadius.round },
+    filterActive: { backgroundColor: colors.primary.main },
+    filterText: { color: colors.neutral.textSecondary, fontSize: 13, fontWeight: '600' },
+    filterActiveText: { color: colors.neutral.white },
+    toolbar: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, gap: spacing.xs },
+    meta: { fontSize: 11, color: colors.neutral.textSecondary },
+    allButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 44 },
+    list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
+    loader: { marginTop: spacing.xxl },
+    notice: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.surface.sage, color: colors.primary.dark, fontSize: 13 },
+    error: { padding: spacing.lg, gap: spacing.md, alignItems: 'flex-start' },
+    errorText: { color: colors.semantic.error, fontSize: 14, lineHeight: 24 },
+    bulkBar: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm, padding: spacing.md, paddingHorizontal: spacing.lg, borderTopWidth: 1, borderColor: colors.neutral.border, backgroundColor: colors.neutral.card },
+    bulkDescription: { flexGrow: 1, gap: spacing.xs },
+    bulkCount: { fontSize: 14, fontWeight: '700', color: colors.neutral.textPrimary },
+    deleteButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderRadius: borderRadius.round, backgroundColor: colors.semantic.error },
+    deleteText: { color: colors.neutral.white, fontSize: 12, fontWeight: '600' },
+    disabled: { opacity: 0.4 },
+    swipeActions: { flexDirection: 'row', marginBottom: spacing.sm, paddingLeft: spacing.sm, gap: spacing.xs },
+    swipeButton: { width: 62, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary.main, borderRadius: borderRadius.md, gap: spacing.xs },
+    swipeDelete: { backgroundColor: colors.semantic.error },
+    swipeText: { fontSize: 11, color: colors.neutral.white },
 });

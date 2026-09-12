@@ -3,6 +3,7 @@ import { DatabaseAdapter } from './db/adapter';
 import { NativeSQLiteAdapter } from './db/NativeSQLiteAdapter';
 import { WebLocalStorageAdapter } from './db/WebLocalStorageAdapter';
 import { Transaction, CreateTransactionInput, DashboardSummary } from '../types';
+import { cancelTransactionsReminders } from './notifications';
 
 let adapter: DatabaseAdapter | null = null;
 
@@ -18,6 +19,7 @@ export const initDatabase = async () => {
         console.log(`✅ Database initialized using ${Platform.OS === 'web' ? 'WebLocalStorage' : 'NativeSQLite'} adapter`);
     } catch (error) {
         console.error('❌ Failed to init database adapter:', error);
+        throw error;
     }
 };
 
@@ -52,6 +54,15 @@ export const updateTransaction = async (id: string, updates: Partial<Transaction
 
 export const removeTransaction = async (id: string): Promise<void> => {
     return getAdapter().removeTransaction(id);
+};
+
+/** Persist first. A reminder failure must never be reported as a failed database delete. */
+export const removeTransactions = async (ids: readonly string[]) => {
+    const uniqueIds = [...new Set(ids)];
+    if (!uniqueIds.length) return { reminderCleanupFailed: false };
+    await getAdapter().removeTransactions(uniqueIds);
+    const failed = await cancelTransactionsReminders(uniqueIds);
+    return { reminderCleanupFailed: failed.length > 0 };
 };
 
 export const markTransactionComplete = async (id: string): Promise<void> => {

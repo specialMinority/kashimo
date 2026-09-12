@@ -1,188 +1,112 @@
-/**
- * Kashimo App Entry Point
- * 앱 진입점 및 네비게이션 설정
- */
-
+import { AppText as Text } from './src/components/AppText';
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Platform, TouchableOpacity, Text } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer, NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as NavigationBar from 'expo-navigation-bar';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-
-import TabNavigator from './src/navigation/TabNavigator';
+import TabNavigator, { RootTabParamList } from './src/navigation/TabNavigator';
 import DetailScreen from './src/screens/DetailScreen';
 import EditScreen from './src/screens/EditScreen';
-import { colors } from './src/styles/theme';
-import { initDatabase } from './src/services/database';
-import { requestNotificationPermissions } from './src/services/notifications';
+import { colors, spacing, borderRadius } from './src/styles/theme';
+import { getAllTransactions, initDatabase } from './src/services/database';
+import { cleanUpDeletedTransactionReminders } from './src/services/notifications';
+import { brandAssets } from './src/constants/branding';
 
-// 네비게이션 타입 정의
 export type RootStackParamList = {
-  Main: undefined;
-  Detail: { transactionId: string };
-  Edit: { transactionId: string };
+    Main: NavigatorScreenParams<RootTabParamList> | undefined;
+    Detail: { transactionId: string };
+    Edit: { transactionId: string };
 };
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+const navigationTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: colors.primary.main, background: colors.neutral.background, card: colors.neutral.background, text: colors.neutral.textPrimary, border: colors.neutral.border } };
 
-// 스플래시 스크린 유지
-try {
-  SplashScreen.preventAutoHideAsync().catch(() => { });
-} catch (e) { }
-
-// 에러 바운더리 (안정성 확보)
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.neutral.background, padding: 20 }}>
-          <Ionicons name="warning" size={64} color={colors.accent.coral} />
-          <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.neutral.textPrimary, marginTop: 20 }}>App Error Detected</Text>
-          <Text style={{ marginTop: 10, textAlign: 'center', color: colors.neutral.textSecondary }}>{this.state.error?.toString()}</Text>
-          <TouchableOpacity
-            style={{ marginTop: 30, padding: 15, backgroundColor: colors.primary.main, borderRadius: 10 }}
-            onPress={() => window.location.reload()}
-          >
-            <Text style={{ color: 'white', fontWeight: 'bold' }}>Reload App</Text>
-          </TouchableOpacity>
-        </View>
-      );
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+    state = { failed: false };
+    static getDerivedStateFromError() { return { failed: true }; }
+    componentDidCatch(error: Error) { console.error('App render failed', error); }
+    render() {
+        if (!this.state.failed) return this.props.children;
+        return <View style={styles.center}>
+            <Text style={styles.errorTitle}>画面を読み込めませんでした</Text>
+            <Text style={styles.message}>アプリを開き直して、もう一度お試しください。</Text>
+            <TouchableOpacity accessibilityRole="button" style={styles.retry} onPress={() => Platform.OS === 'web' ? window.location.reload() : this.setState({ failed: false })}><Text style={styles.retryText}>再読み込み</Text></TouchableOpacity>
+        </View>;
     }
-    return this.props.children;
-  }
 }
 
 export default function App() {
-  console.log('App: Rendering started');
+    const [fontsLoaded, fontError] = useFonts(Ionicons.font);
+    const [ready, setReady] = useState(false);
+    const [error, setError] = useState(false);
+    const [attempt, setAttempt] = useState(0);
+    useEffect(() => {
+        let active = true;
+        setError(false);
+        const initialize = async () => {
+            try {
+                await initDatabase();
+                const records = await getAllTransactions();
+                await cleanUpDeletedTransactionReminders(records.map(t => t.id));
+                if (active) setReady(true);
+            } catch (e) {
+                console.error('Storage initialization failed', e);
+                if (active) setError(true);
+            }
+        };
+        void initialize();
+        return () => { active = false; };
+    }, [attempt]);
+    useEffect(() => {
+        if (error || (ready && (fontsLoaded || fontError))) void SplashScreen.hideAsync().catch(() => {});
+    }, [ready, error, fontsLoaded, fontError]);
 
-  // Web에서 아이콘 안보임 문제 해결을 위해 CDN 경로 명시 (CORS 허용되는 unpkg 사용)
-  const fontSource = Platform.OS === 'web'
-    ? {
-      ...Ionicons.font,
-      'ionicons': 'https://unpkg.com/@expo/vector-icons@15.0.3/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'
-    }
-    : Ionicons.font;
-
-  const [fontsLoaded, fontError] = useFonts(fontSource);
-
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    const setup = async () => {
-      try {
-        console.log('App: Setup started');
-        await initDatabase();
-        console.log('App: DB Init done');
-
-        // 알림 권한은 사용자가 설정 화면에서 명시적으로 켤 때만 요청
-        // 앱 시작 시 자동으로 권한 요청하지 않음 (불필요한 팝업 방지)
-        console.log('App: Notification permission will be requested when user enables it in settings');
-
-      } catch (e) {
-        console.error('Setup failed', e);
-        if (Platform.OS === 'web') {
-          // On web, if setup fails, we might still want to try showing something
-          console.log('App: Setup failed but trying to proceed');
-        }
-      }
-    };
-    setup();
-
-    if (Platform.OS === 'android') {
-      try {
-        NavigationBar.setVisibilityAsync('hidden');
-        NavigationBar.setBehaviorAsync('overlay-swipe');
-      } catch (e) { }
-    }
-
-    // 5초 타임아웃 (Safety fallback)
-    const timer = setTimeout(() => {
-      setIsReady(prev => {
-        if (!prev) console.log('App: 5s Fallback timer triggered isReady');
-        return true;
-      });
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    console.log('App: Font status changed', { fontsLoaded, fontError });
-    if (fontsLoaded || fontError) {
-      setIsReady(true);
-      SplashScreen.hideAsync().catch(() => { });
-    }
-  }, [fontsLoaded, fontError]);
-
-  if (!isReady) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primary.main }}>
-        <ActivityIndicator size="large" color="white" />
-        <Text style={{ color: 'white', marginTop: 10 }}>Kashimo Initializing...</Text>
-      </View>
-    );
-  }
-
-  const RootView = GestureHandlerRootView;
-
-  console.log('App: Rendering Navigation Container');
-  return (
-    <ErrorBoundary>
-      <RootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <NavigationContainer>
-            <StatusBar style="light" />
-            <Stack.Navigator
-              screenOptions={({ navigation }) => ({
-                headerStyle: { backgroundColor: colors.primary.main },
-                headerTintColor: colors.neutral.white,
-                headerTitleStyle: { fontWeight: 'bold' },
-                headerBackTitleVisible: false,
-                headerLeft: (props) => {
-                  if (props?.canGoBack) {
-                    return (
-                      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
-                        <Ionicons name="arrow-back" size={24} color={colors.neutral.white} />
-                      </TouchableOpacity>
-                    );
-                  }
-                  return null;
-                },
-              })}
-            >
-              <Stack.Screen
-                name="Main"
-                component={TabNavigator}
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="Detail"
-                component={DetailScreen}
-                options={{ title: '取引詳細' }}
-              />
-              <Stack.Screen
-                name="Edit"
-                component={EditScreen}
-                options={{ title: '取引를 編集' }}
-              />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </SafeAreaProvider>
-      </RootView>
-    </ErrorBoundary>
-  );
+    if (error) return <View style={styles.center}>
+        <Text style={styles.errorTitle}>保存した記録を開けませんでした</Text>
+        <Text style={styles.message}>ブラウザの保存設定を確認してください。{ '\n' }既存の記録は変更されていません。</Text>
+        <TouchableOpacity accessibilityRole="button" style={styles.retry} onPress={() => setAttempt(a => a + 1)}><Text style={styles.retryText}>再試行</Text></TouchableOpacity>
+    </View>;
+    if (!ready || (!fontsLoaded && !fontError)) return <View style={styles.center}><ActivityIndicator color={colors.primary.main} size="large" /><Text style={styles.message}>カシモを準備しています…</Text></View>;
+    return <ErrorBoundary>
+        <GestureHandlerRootView style={styles.root}>
+            <Image source={brandAssets.cozy} style={styles.backgroundPhoto} resizeMode="cover" />
+            <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, styles.veil]} />
+            <View style={styles.app}>
+                <SafeAreaProvider>
+                    <NavigationContainer theme={navigationTheme}>
+                        <StatusBar style="dark" />
+                        <Stack.Navigator screenOptions={({ navigation }) => ({
+                            headerStyle: { backgroundColor: colors.neutral.background },
+                            headerTintColor: colors.neutral.textPrimary,
+                            headerTitleStyle: { fontWeight: '600', fontSize: 16 },
+                            headerShadowVisible: false,
+                            headerLeft: props => props.canGoBack ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="戻る" style={styles.back} onPress={() => navigation.goBack()}><Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="arrow-back" size={23} color={colors.neutral.textPrimary} /></TouchableOpacity> : null,
+                            contentStyle: { backgroundColor: colors.neutral.background },
+                        })}>
+                            <Stack.Screen name="Main" component={TabNavigator} options={{ headerShown: false }} />
+                            <Stack.Screen name="Detail" component={DetailScreen} options={{ title: '取引の詳細' }} />
+                            <Stack.Screen name="Edit" component={EditScreen} options={{ title: '取引を編集' }} />
+                        </Stack.Navigator>
+                    </NavigationContainer>
+                </SafeAreaProvider>
+            </View>
+        </GestureHandlerRootView>
+    </ErrorBoundary>;
 }
+const styles = StyleSheet.create({
+    root: { flex: 1, alignItems: 'center', overflow: 'hidden', backgroundColor: colors.neutral.background },
+    backgroundPhoto: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+    app: { flex: 1, width: '100%', maxWidth: 960, backgroundColor: colors.neutral.background },
+    veil: { backgroundColor: colors.surface.veil },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.neutral.background, padding: spacing.lg },
+    errorTitle: { fontSize: 19, fontWeight: '600', color: colors.neutral.textPrimary, textAlign: 'center' },
+    message: { fontSize: 13, lineHeight: 23, color: colors.neutral.textSecondary, marginTop: spacing.md, textAlign: 'center' },
+    retry: { padding: spacing.md, paddingHorizontal: spacing.lg, backgroundColor: colors.primary.main, borderRadius: borderRadius.round, marginTop: spacing.lg },
+    retryText: { color: colors.neutral.white, fontWeight: '600' },
+    back: { width: 44, height: 44, justifyContent: 'center' },
+});

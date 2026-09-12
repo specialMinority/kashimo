@@ -142,6 +142,7 @@ export async function scheduleTransactionReminders(
     dueDate: Date | null,
     type: 'lent' | 'borrowed'
 ): Promise<string[]> {
+    if (Platform.OS === 'web') return [];
     const settings = await getNotificationSettings();
 
     if (!settings.enabled) {
@@ -220,25 +221,50 @@ async function saveScheduledNotifications(transactionId: string, notificationIds
  * 거래 관련 알림 취소
  */
 export async function cancelTransactionReminders(transactionId: string): Promise<void> {
+    await cancelTransactionsReminders([transactionId]);
+}
+
+/** Read/write the map once; concurrent per-record writes can lose other cancellations. */
+export async function cancelTransactionsReminders(transactionIds: readonly string[]): Promise<string[]> {
+    if (!transactionIds.length) return [];
+    try {
+        const stored = await AsyncStorage.getItem(SCHEDULED_NOTIFICATIONS_KEY);
+        if (!stored) return [];
+
+        const map: Record<string, string[]> = JSON.parse(stored);
+        const failed: string[] = [];
+        for (const transactionId of new Set(transactionIds)) {
+            const remaining: string[] = [];
+            for (const id of map[transactionId] || []) {
+                try {
+                    if (Platform.OS !== 'web') await Notifications.cancelScheduledNotificationAsync(id);
+                } catch {
+                    remaining.push(id);
+                }
+            }
+            if (remaining.length) {
+                map[transactionId] = remaining;
+                failed.push(transactionId);
+            } else delete map[transactionId];
+        }
+        await AsyncStorage.setItem(SCHEDULED_NOTIFICATIONS_KEY, JSON.stringify(map));
+        return failed;
+    } catch (error) {
+        console.error('❌ 알림 취소 실패:', error);
+        return [...transactionIds];
+    }
+}
+
+/** Retry leftover reminders for deleted records at the next successful app startup. */
+export async function cleanUpDeletedTransactionReminders(existingIds: readonly string[]): Promise<void> {
     try {
         const stored = await AsyncStorage.getItem(SCHEDULED_NOTIFICATIONS_KEY);
         if (!stored) return;
-
-        const map: Record<string, string[]> = JSON.parse(stored);
-        const notificationIds = map[transactionId];
-
-        if (notificationIds) {
-            for (const id of notificationIds) {
-                await Notifications.cancelScheduledNotificationAsync(id);
-            }
-            console.log(`✅ 알림 취소: ${transactionId} (${notificationIds.length}개)`);
-
-            // 저장된 목록에서 제거
-            delete map[transactionId];
-            await AsyncStorage.setItem(SCHEDULED_NOTIFICATIONS_KEY, JSON.stringify(map));
-        }
+        const existing = new Set(existingIds);
+        const removed = Object.keys(JSON.parse(stored)).filter(id => !existing.has(id));
+        await cancelTransactionsReminders(removed);
     } catch (error) {
-        console.error('❌ 알림 취소 실패:', error);
+        console.warn('Reminder cleanup deferred', error);
     }
 }
 
@@ -294,7 +320,6 @@ export async function checkRemindersOnAppLoad(): Promise<number> {
  * 웹용 시스템 알림 발송 helper
  */
 export const sendWebNotification = (title: string, body: string) => {
-    console.log('🔔 [WebNotification] Attempting to send. Permission:', Notification.permission);
     if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'granted') {
         try {
             new Notification(title, { body, icon: './assets/icon.png' });

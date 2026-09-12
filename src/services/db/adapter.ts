@@ -8,6 +8,7 @@ export interface DatabaseAdapter {
     getPendingTransactions(): Promise<Transaction[]>;
     updateTransaction(id: string, updates: Partial<Transaction>): Promise<void>;
     removeTransaction(id: string): Promise<void>;
+    removeTransactions(ids: readonly string[]): Promise<void>;
     markTransactionComplete(id: string): Promise<void>;
     revertTransactionStatus(id: string): Promise<void>;
     getDashboardSummary(): Promise<DashboardSummary>;

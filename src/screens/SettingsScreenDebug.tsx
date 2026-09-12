@@ -1,5 +1,6 @@
+import { AppText as Text } from '../components/AppText';
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 // 파일명을 변경하여 캐시를 우회하는 전략
 export default function SettingsScreenDebug() {
