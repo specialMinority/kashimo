@@ -8,7 +8,7 @@
 - 자동 예약 알림은 Android 앱 기능이다. 웹에서는 앱을 열어 기한을 확인한다.
 
 ## Android
-- GitHub Releases의 **Kashimo 1.1.0 Preview**에서 APK를 내려받는다.
+- [Kashimo 1.1.0 Preview](https://github.com/specialMinority/kashimo/releases/tag/v1.1.0-preview)에서 APK를 내려받는다.
 - 파일을 열어 Android의 설치 안내를 따른다. arm64-v8a / x86_64용 APK다.
 - 이 파일은 Release 모드로 번들링되지만 Expo 개발 키로 서명한 설치/검증용 APK다.
 - 기존 설치본과 서명이 다르면 바로 업데이트할 수 없다. 기존 앱을 제거하기 전에 설정에서 JSON 백업을 반드시 저장하고 새 설치 후 복원한다.
@@ -33,7 +33,10 @@ Google Drive 로그인은 사용자의 계정과 기존 OAuth 설정을 필요�
 - 320 / 390 / 768 / 1440px 스크린샷 확인.
 - GitHub Actions의 실제 Android APK 컴파일 성공.
 - 실제 배포 URL에서 HTTP 200, 화면, 이미지, PWA manifest, 기록 탭 확인.
+- WebKit 26.5에서 주요 조작 8개 시나리오 및 서버 종료 상태의 오프라인 재시작·저장 기록·반응형 화면 검증 통과.
+- APK의 Android v2 서명 및 패키지 ZIP CRC 검증 통과.
 - 실제 Android/iPhone 기기에서 설치 및 장기 사용 시험은 수행하지 않았다.
+- 빌드 참조와 APK SHA-256은 [최종 검증 기록](FINAL_VERIFICATION.md)을 참고한다.
 
 ## 개발 재현
 Node.js 24와 Google Chrome을 사용한다.

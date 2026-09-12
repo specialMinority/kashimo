@@ -23,7 +23,7 @@
 
 ## 진행 및 디버깅
 - 저장소 복제 및 기존 문서/앱 설정 확인 완료.
-- 구현 및 검증 진행 중. 확인하지 않은 실기기 동작이나 배포 성공을 완료로 표시하지 않는다.
+- 디자인·기능 구현과 자동 검증 완료. 실기기 시험 범위는 최종 검증 문서에 별도 기록한다.
 
 ## 검증 결과
 - TypeScript 검사 통과.
@@ -35,7 +35,9 @@
 - 실기기 Android/iPhone 설치 테스트는 수행하지 않았다.
 
 ## 납품
-- 작업 완료 시 소스 경로, 웹 URL, Android 빌드, 테스트 명령과 알려진 제한을 기록한다.
+- 웹: https://specialminority.github.io/kashimo/
+- APK·소스·웹 패키지: https://github.com/specialMinority/kashimo/releases/tag/v1.1.0-preview
+- 최종 빌드·서명·WebKit 검증: [FINAL_VERIFICATION.md](FINAL_VERIFICATION.md).
 
 ## 2026-09-13 디버깅 메모
 - npm 의존성 다운로드는 샌드박스 네트워크 제한으로 중단 후 승인된 네트워크 실행으로 완료.
@@ -59,3 +61,10 @@
 - 탭 라벨을 아이콘 아래로 통일하여 넓은 화면에서 겹침 제거.
 - 기존 완료/취소와 JSON 백업/복원까지 브라우저에서 추가 검증 완료.
 - 자세한 설치 방법, 검증 범위 및 기존 OAuth 제한은 DELIVERY.md 참고.
+
+## 최종 납품 검증 (2026-09-13 KST)
+- 최종 앱 소스 `7ea2ef0cdc2697cfcdb44c47d91802c53fcf585d`에서 GitHub Actions `34702734430`의 웹 검증과 Android 빌드 모두 성공.
+- 내려받은 APK의 ZIP CRC와 Android v2 서명을 공식 apksig 라이브러리로 검증. 서명 주체는 Android Debug.
+- WebKit 26.5/Windows에서 삭제·등록·수정·정산·백업/복원 8개 시나리오 통과.
+- WebKit의 context.setOffline(true) 뒤 reload에서 내부 오류가 발생하여 테스트 도구의 에뮬레이션과 실제 통신 중단을 구분. 독립 로컬 서버를 종료하고 네트워크 실패를 확인한 상태에서는 캐시를 사용한 재시작·저장 기록 표시 및 네 가지 화면 폭 검증이 모두 통과. 이 결과를 실제 iPhone 기기 시험과 동일시하지 않는다.
+- 최종 문서 갱신은 검증된 앱 소스에 기능 변경을 추가하지 않는다.

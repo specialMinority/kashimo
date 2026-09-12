@@ -31,8 +31,15 @@
 - 일괄 삭제에서 알림 실패와 저장 실패를 구분한다. 저장 실패 시 성공 메시지나 목록 제거 금지.
 - 앱스토어 제출, 실기기 검증, 사용자 Google 로그인은 실제 수행 여부를 구분해서 기록한다.
 
+## 납품 링크
+- 웹앱: https://specialminority.github.io/kashimo/
+- 다운로드: https://github.com/specialMinority/kashimo/releases/tag/v1.1.0-preview
+- 변경 PR: https://github.com/specialMinority/kashimo/pull/3
+- 앱 빌드 소스: 7ea2ef0cdc2697cfcdb44c47d91802c53fcf585d. 이후 커밋은 최종 검증 문서 갱신.
+
 ## 상세 기록
 - [납품 및 설치 가이드](docs/DELIVERY.md)
+- [최종 검증과 APK 서명](docs/FINAL_VERIFICATION.md)
 - [작업 및 디버깅](docs/WORK_LOG.md)
 - [이미지 생성 프롬프트 및 자산](docs/IMAGE_GENERATION.md)
 - [이전 작업 기록](docs/CONTEXT_ARCHIVE.md) — 과거 상태이며 현재 설정과 상충하면 이 문서를 우선한다.
