@@ -15,6 +15,7 @@
 - npm run preview:web → http://localhost:4173/kashimo/
 
 ## 현재 상태
+- 웹 하단 탭 글자 잘림 수정: 웹 탭바 76px, 라벨 줄높이 16px/축소 방지. Chrome·WebKit 256개 라벨 검사 통과. Android 1.1.1 레이아웃 유지. [상세 기록](docs/WEB_TAB_LABEL_FIX.md).
 - 1.1.1 Android 에뮬레이터 업데이트 설치와 기본/1.3배 글꼴의 네 탭 검증 성공. 서명 일치·versionCode 2·APK 무결성 확인.
 - 1.1.1: Android 하단 탭의 31px 슬롯/28px 여백 충돌로 생기던 글리프 잘림 수정. 50×32 슬롯과 배경, 24×24 글리프 중앙 정렬.
 - 고양이 AI 아이콘 및 실제 사진 반영. 크림/녹색 테마.
@@ -37,7 +38,7 @@
 - 웹앱: https://specialminority.github.io/kashimo/
 - 다운로드: https://github.com/specialMinority/kashimo/releases/tag/v1.1.1-preview
 - 변경 PR: https://github.com/specialMinority/kashimo/pull/3
-- 앱 빌드 소스: 0c3c52f396d33f3fc56822b525dd2922ab589d99 (1.1.1). 이전 1.1.0 빌드 기록은 FINAL_VERIFICATION.md에 보관.
+- Android 빌드 소스: 0c3c52f396d33f3fc56822b525dd2922ab589d99 (1.1.1). 웹은 이후 라벨 수정 번들 `index-96cc8834d77307dc690a96489fc283c8.js`. 이전 1.1.0 빌드 기록은 FINAL_VERIFICATION.md에 보관.
 
 ## 상세 기록
 - [Android 하단 아이콘 수정·비교](docs/ANDROID_TAB_FIX.md)

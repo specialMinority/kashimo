@@ -84,3 +84,11 @@
 - Android는 성공한 네이티브 화면 검증의 원본 PNG를 사용. 웹 목록/일괄 삭제는 격리된 샘플 데이터 환경에서 다시 캡처.
 - 캡처 환경·촬영일·SHA-256을 assets/screenshots/v1.1.1/README.md에 기록.
 - README 스크린샷 섹션과 이미지 파일만 기본 브랜치에 반영하며, 개발 브랜치에도 같은 갤러리를 유지한다.
+
+## Web/PWA 하단 탭 글자 잘림 수정 (2026-09-13)
+- Chrome·WebKit에서 라벨 높이 9px로 축소되는 문제를 재현했다. 한 줄 Text의 overflow 숨김으로 각각 12px/14px 텍스트가 잘렸다.
+- 웹 탭바 높이 76px와 라벨 줄높이 16px/축소 방지 적용. Android 1.1.1 설정은 유지한다.
+- TypeScript/프로덕션 빌드 성공. 새 회귀 검사는 수정 전 실패, 수정 후 Chrome·WebKit 8개 화면 조건에서 256개 라벨 검사 통과.
+- 웹 전용 수정은 로컬 브라우저에서 검증하고 배포한다. 기존 Android 바이너리 재생성은 필요하지 않아 이 변경의 커밋은 `[skip ci]`를 사용한다.
+- 배포 번들, 재현 수치, 검사 및 재실행 방법은 [WEB_TAB_LABEL_FIX.md](WEB_TAB_LABEL_FIX.md)에 기록한다.
+- 공개 GitHub Pages 배포 및 새 번들 확인 완료. 공개 주소의 Chrome/WebKit 256개 검사도 통과. README 웹 스크린샷 2장과 캡처 기록을 갱신했다.

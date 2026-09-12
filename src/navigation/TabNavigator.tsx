@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,8 +21,10 @@ export default function TabNavigator() {
         tabBarAccessibilityLabel: ({ Home: 'ホーム', List: '記録', Add: '追加', Settings: '設定' })[route.name],
         tabBarActiveTintColor: colors.primary.main,
         tabBarInactiveTintColor: colors.neutral.textTertiary,
-        tabBarStyle: { backgroundColor: colors.neutral.card, borderTopColor: colors.neutral.border, height: 68 + insets.bottom, paddingBottom: Math.max(insets.bottom, 8), paddingTop: 8, elevation: 0 },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
+        // Web's one-line label can flex-shrink to 9px and clip its text. Reserve
+        // room for the icon, the full label line, and the navigator's padding.
+        tabBarStyle: { backgroundColor: colors.neutral.card, borderTopColor: colors.neutral.border, height: (Platform.OS === 'web' ? 76 : 68) + insets.bottom, paddingBottom: Math.max(insets.bottom, 8), paddingTop: 8, elevation: 0 },
+        tabBarLabelStyle: [styles.label, Platform.OS === 'web' && styles.webLabel],
         tabBarHideOnKeyboard: true,
         tabBarLabelPosition: 'below-icon',
         // The navigator defaults to a 31px slot. Horizontal padding alone squeezes
@@ -40,6 +42,8 @@ export default function TabNavigator() {
 }
 
 const styles = StyleSheet.create({
+    label: { fontSize: 10, fontWeight: '600' },
+    webLabel: { lineHeight: 16, flexShrink: 0 },
     iconFrame: { width: 50, height: 32, flexShrink: 0, borderRadius: borderRadius.round, alignItems: 'center', justifyContent: 'center' },
     iconGlyph: { width: 24, height: 24, lineHeight: 24, textAlign: 'center', includeFontPadding: false },
 });
