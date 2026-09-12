@@ -1,4 +1,4 @@
-# Kashimo 1.1.0 설치 및 납품 안내
+# Kashimo 1.1.1 설치 및 납품 안내
 
 ## 웹앱 / iPhone
 - 실행 주소: https://specialminority.github.io/kashimo/
@@ -8,11 +8,15 @@
 - 자동 예약 알림은 Android 앱 기능이다. 웹에서는 앱을 열어 기한을 확인한다.
 
 ## Android
-- [Kashimo 1.1.0 Preview](https://github.com/specialMinority/kashimo/releases/tag/v1.1.0-preview)에서 APK를 내려받는다.
+- [Kashimo 1.1.1 Preview](https://github.com/specialMinority/kashimo/releases/tag/v1.1.1-preview)에서 APK를 내려받는다.
 - 파일을 열어 Android의 설치 안내를 따른다. arm64-v8a / x86_64용 APK다.
+- 이전 1.1.0 Preview 사용자는 앱을 삭제하지 않고 1.1.1 APK를 열어 업데이트한다. 같은 서명과 업데이트 설치 성공을 확인했다.
 - 이 파일은 Release 모드로 번들링되지만 Expo 개발 키로 서명한 설치/검증용 APK다.
 - 기존 설치본과 서명이 다르면 바로 업데이트할 수 없다. 기존 앱을 제거하기 전에 설정에서 JSON 백업을 반드시 저장하고 새 설치 후 복원한다.
 - Google Play 배포에는 소유자의 EAS/배포 서명으로 별도 빌드가 필요하다.
+
+## 1.1.1 변경
+Android 하단 탭 아이콘이 잘리는 배치를 수정했다. 슬롯과 배경에 충분한 크기를 확보하고 중앙 정렬한다. 앱 버전은 1.1.1, Android versionCode는 2다. 세부 원인과 화면 비교는 [Android 아이콘 수정 기록](ANDROID_TAB_FIX.md)을 참고한다.
 
 ## 일괄 삭제
 1. **記録** 탭에서 **選択**을 누른다.
@@ -35,8 +39,9 @@ Google Drive 로그인은 사용자의 계정과 기존 OAuth 설정을 필요�
 - 실제 배포 URL에서 HTTP 200, 화면, 이미지, PWA manifest, 기록 탭 확인.
 - WebKit 26.5에서 주요 조작 8개 시나리오 및 서버 종료 상태의 오프라인 재시작·저장 기록·반응형 화면 검증 통과.
 - APK의 Android v2 서명 및 패키지 ZIP CRC 검증 통과.
+- 1.1.1 Android 에뮬레이터 업데이트 설치, 네 탭 기본/1.3배 글꼴 화면 및 수정 전후 비교 검증 통과.
 - 실제 Android/iPhone 기기에서 설치 및 장기 사용 시험은 수행하지 않았다.
-- 빌드 참조와 APK SHA-256은 [최종 검증 기록](FINAL_VERIFICATION.md)을 참고한다.
+- 1.1.1 빌드 참조와 APK SHA-256은 [아이콘 수정 검증 기록](ANDROID_TAB_FIX.md)을 참고한다.
 
 ## 개발 재현
 Node.js 24와 Google Chrome을 사용한다.

@@ -2,6 +2,13 @@
 
 友だちとの貸し借りを、やさしく記録。AndroidアプリとiPhoneのホーム画面で使える、ローカル保存の貸し借り帳です。
 
+## 1.1.1 の修正
+
+Androidで下部タブのアイコンが細く切れたり、背景だけ表示されるレイアウトを修正しました。
+
+- [最新版APK・ソースのダウンロード](https://github.com/specialMinority/kashimo/releases/tag/v1.1.1-preview)
+- [原因とAndroid画面の比較](docs/ANDROID_TAB_FIX.md)
+
 ## 1.1 の変更
 
 - 実際の猫の写真と、写真から生成したAIキャラクターを使った新デザイン。

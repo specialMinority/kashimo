@@ -15,6 +15,8 @@
 - npm run preview:web → http://localhost:4173/kashimo/
 
 ## 현재 상태
+- 1.1.1 Android 에뮬레이터 업데이트 설치와 기본/1.3배 글꼴의 네 탭 검증 성공. 서명 일치·versionCode 2·APK 무결성 확인.
+- 1.1.1: Android 하단 탭의 31px 슬롯/28px 여백 충돌로 생기던 글리프 잘림 수정. 50×32 슬롯과 배경, 24×24 글리프 중앙 정렬.
 - 고양이 AI 아이콘 및 실제 사진 반영. 크림/녹색 테마.
 - 선택 모드, 필터 내 전체 선택, 삭제 개수 확인, 오류/재시도 구현.
 - 웹 단일 쓰기 및 SQLite 독점 트랜잭션으로 일괄 삭제 원자성 확보.
@@ -33,11 +35,12 @@
 
 ## 납품 링크
 - 웹앱: https://specialminority.github.io/kashimo/
-- 다운로드: https://github.com/specialMinority/kashimo/releases/tag/v1.1.0-preview
+- 다운로드: https://github.com/specialMinority/kashimo/releases/tag/v1.1.1-preview
 - 변경 PR: https://github.com/specialMinority/kashimo/pull/3
-- 앱 빌드 소스: 7ea2ef0cdc2697cfcdb44c47d91802c53fcf585d. 이후 커밋은 최종 검증 문서 갱신.
+- 앱 빌드 소스: 0c3c52f396d33f3fc56822b525dd2922ab589d99 (1.1.1). 이전 1.1.0 빌드 기록은 FINAL_VERIFICATION.md에 보관.
 
 ## 상세 기록
+- [Android 하단 아이콘 수정·비교](docs/ANDROID_TAB_FIX.md)
 - [납품 및 설치 가이드](docs/DELIVERY.md)
 - [최종 검증과 APK 서명](docs/FINAL_VERIFICATION.md)
 - [작업 및 디버깅](docs/WORK_LOG.md)
