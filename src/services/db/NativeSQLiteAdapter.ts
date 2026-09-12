@@ -13,6 +13,7 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
     async getPendingTransactions(): Promise<Transaction[]> { throw new Error('Platform specific implementation missing'); }
     async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> { throw new Error('Platform specific implementation missing'); }
     async removeTransaction(id: string): Promise<void> { throw new Error('Platform specific implementation missing'); }
+    async removeTransactions(ids: readonly string[]): Promise<void> { throw new Error('Platform specific implementation missing'); }
     async markTransactionComplete(id: string): Promise<void> { throw new Error('Platform specific implementation missing'); }
     async revertTransactionStatus(id: string): Promise<void> { throw new Error('Platform specific implementation missing'); }
     async getDashboardSummary(): Promise<DashboardSummary> { throw new Error('Platform specific implementation missing'); }

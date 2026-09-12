@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
+import { localDateKey } from '../../utils/date';
 import { DatabaseAdapter } from './adapter';
 import { Transaction, CreateTransactionInput, TransactionStatus, DashboardSummary } from '../../types';
 
@@ -156,7 +157,7 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
         if (fields.length === 0) return;
 
         const setClause = fields.map(field => `${field} = ?`).join(', ');
-        const values = fields.map(key => (updates as any)[key]);
+        const values = fields.map(key => (updates as any)[key] ?? null);
 
         await db.runAsync(
             `UPDATE transactions SET ${setClause} WHERE id = ?`,
@@ -165,8 +166,22 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
     }
 
     async removeTransaction(id: string): Promise<void> {
-        const db = this.getDb();
-        await db.runAsync('DELETE FROM transactions WHERE id = ?', [id]);
+        return this.removeTransactions([id]);
+    }
+
+    async removeTransactions(ids: readonly string[]): Promise<void> {
+        const uniqueIds = [...new Set(ids)];
+        if (uniqueIds.length === 0) return;
+        // One exclusive transaction, including large selections beyond SQLite's bind limit.
+        await this.getDb().withExclusiveTransactionAsync(async tx => {
+            for (let offset = 0; offset < uniqueIds.length; offset += 500) {
+                const batch = uniqueIds.slice(offset, offset + 500);
+                await tx.runAsync(
+                    `DELETE FROM transactions WHERE id IN (${batch.map(() => '?').join(',')})`,
+                    batch,
+                );
+            }
+        });
     }
 
     async markTransactionComplete(id: string): Promise<void> {
@@ -215,8 +230,8 @@ export class NativeSQLiteAdapter implements DatabaseAdapter {
         const nextWeek = new Date();
         nextWeek.setDate(today.getDate() + 7);
 
-        const todayStr = today.toISOString().split('T')[0];
-        const nextWeekStr = nextWeek.toISOString().split('T')[0];
+        const todayStr = localDateKey(today);
+        const nextWeekStr = localDateKey(nextWeek);
 
         const upcoming = await db.getAllAsync<Transaction>(
             `SELECT * FROM transactions 

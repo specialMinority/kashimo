@@ -1,40 +1,56 @@
-# Kashimo (カシモ)
+# Kashimo / カシモ
 
-> **友達との お金、もう忘れない**
+友だちとの貸し借りを、やさしく記録。AndroidアプリとiPhoneのホーム画面で使える、ローカル保存の貸し借り帳です。
 
-**Kashimo**は、インターネット接続なしでも動作する**オフラインファースト(Offline-First)**の個人間金銭取引管理アプリです。
-相手にアプリのインストールを強要せず、自分だけの記録で確実に管理できます。
+## 1.1.1 の修正
 
-> **ハイブリッドアーキテクチャ**:
-> *   **Android**: Google Play Store (ネイティブアプリ)
-> *   **iOS**: [Web PWA](https://specialminority.github.io/kashimo) (ホーム画面に追加)
+Androidで下部タブのアイコンが細く切れたり、背景だけ表示されるレイアウトを修正しました。
 
-## 📱 主な機能
+- [最新版APK・ソースのダウンロード](https://github.com/specialMinority/kashimo/releases/tag/v1.1.1-preview)
+- [原因とAndroid画面の比較](docs/ANDROID_TAB_FIX.md)
 
-### 1. 🔒 完全なプライバシー保護 (ローカルデータベース)
-- **ネイティブ (Android)**: 高性能SQLiteローカルDBを使用
-- **Web (iOS/PWA)**: LocalStorageベースのセキュアなストレージを使用
-- 会員登録やログインは一切不要です。
+## 1.1 の変更
 
-### 2. 💸 スマートな取引管理
-- **貸したお金 / 借りたお金**を一目で把握 (ダッシュボード)
-- 忘れやすい返済期限の管理
-- **部分返済(Partial Payment)**に対応
-- 取引完了処理および取り消し(Undo)機能
+- 実際の猫の写真と、写真から生成したAIキャラクターを使った新デザイン。
+- 記録の複数選択・表示中の全選択・一括削除。確認画面に削除件数を表示します。
+- 削除の失敗時は記録と選択を維持。SQLiteはトランザクション、Webは一回の保存で更新します。
+- iPhone向けアイコン・ホーム画面表示・オフライン起動を整備。
+- 元の保存先・データ形式、登録・編集・精算完了/取消・JSONバックアップを維持。
 
-### 3. 🔔 自動リマインダー
-- 返済期限に合わせて自動的に通知を送信 (ネイティブのみ)
-- **通知タイミング**: D-7、D-3、D-1、D-Day
-- ユーザーが直接催促しなくても、アプリが自動でお知らせします。
+## 使い方
 
-### 4. 💾 データの安全な保管 (バックアップ & リストア)
-- **バックアップ**: 全取引履歴をJSONファイルとして抽出し、安全に保管
-- **リストア**: 端末を変更したり、ブラウザのキャッシュが削除されても復元可能
-- **プラットフォーム別最適化**:
-    - **Android**: フォルダ直接選択 (SAF)
-    - **Web/iOS**: ファイルダウンロード/アップロード (Blob API)
+Web: https://specialminority.github.io/kashimo/
 
----
+iPhoneはSafariで開き、「共有」→「ホーム画面に追加」。初回のオンライン読み込みでアプリを保存した後はオフラインでも使えます。自動予約通知はAndroid用です。Webではアプリを開いて期限を確認します。
+
+一括削除は「記録」→「選択」→取引を選ぶ（または「すべて選択」）→「選択した取引を削除」。フィルターを切り替えると選択を解除します。「すべて」を選べば精算済みの記録も含めて削除できます。
+
+ブラウザのサイトデータ削除やアンインストールの前に、設定からJSONバックアップを保存してください。Google Drive連携は任意で、既存のOAuth設定を引き継いでいます。
+
+## 開発・検証
+
+Node.js 24を使用します。
+
+```sh
+npm ci
+npm run typecheck
+npm test
+npm run build:web
+npm run preview:web
+```
+
+http://localhost:4173/kashimo/ で確認できます。別ターミナルで `npm run test:e2e` を実行します（Google Chromeが必要）。スクリーンショットとテスト用データは検証専用の新しいブラウザ環境で生成します。
+
+## Android
+
+GitHub Actionsの `Verify and build Kashimo` がAndroid preview APKを生成します。Artifactsの `kashimo-android-preview` をダウンロードしてインストールできます。これはExpo標準の開発キーで署名する検証用APKで、arm64-v8a / x86_64を対象とします。
+
+Google Play向けには所有者のEASアカウント・配布用署名でビルドしてください。
+
+```sh
+npx eas-cli login
+npx eas-cli build --platform android --profile production
+```
 
 ## 📸 スクリーンショット
 
@@ -58,79 +74,10 @@ Android API 35 エミュレーターで撮影した、取引登録前の画面�
 
 撮影日: 2026年9月13日（KST/JST）。[キャプチャ環境と元データ](assets/screenshots/v1.1.1/README.md)
 
+## 作業記録
 
----
+- [現在のコンテキスト](CONTEXT.md)
+- [変更・デバッグ・検証記録](docs/WORK_LOG.md)
+- [画像生成プロンプト](docs/IMAGE_GENERATION.md)
 
-## 🛠 技術スタック
-
-- **フレームワーク**: React Native (Expo SDK 52)
-- **言語**: TypeScript
-- **データベース**:
-    - Android: `expo-sqlite` (ネイティブSQLite)
-    - Web: `localStorage` (アダプターパターン)
-- **ファイルシステム**: `expo-file-system` (レガシーインポート)
-- **通知**: `expo-notifications` (ローカルプッシュ)
-- **デプロイ**: Play Store (Android) / **GitHub Pages** (Web PWA)
-
-## 📁 プロジェクト構成
-
-```
-kashimo/
-├── src/
-│   ├── components/     # 再利用可能なUIコンポーネント
-│   ├── screens/        # 画面 (Home, Add, List, Detail, Settings)
-│   ├── services/       # ビジネスロジック
-│   │   ├── db/            # ✅ データベースアダプター
-│   │   │   ├── NativeSQLiteAdapter.native.ts
-│   │   │   └── WebLocalStorageAdapter.ts
-│   │   ├── database.ts    # ファサードパターン
-│   │   ├── backup.native.ts
-│   │   └── backup.web.ts
-│   │   └── notifications.ts
-│   ├── constants/      # 定数と設定
-│   └── styles/         # デザイントークン (テーマ)
-├── assets/             # 画像、フォント
-└── app.json            # Expo設定
-```
-
----
-
-## 🚀 はじめ方
-
-### 1. インストールとWeb実行 (iOS/デスクトップ)
-
-```bash
-# プロジェクトのクローン
-git clone https://github.com/specialMinority/kashimo.git
-
-# 依存関係のインストール
-npm install
-
-# Webサーバーの起動 (PWAモード)
-npx expo start --web
-```
-
-### 2. ビルドとデプロイ (GitHub Pages)
-
-```bash
-# Webアプリのビルドとデプロイ
-npm run deploy
-```
-
-### 3. Android実行とビルド
-
-```bash
-# 開発サーバーの起動 (Android)
-npx expo start --android
-
-# プレビュービルド (APK生成)
-npx eas-cli build --profile preview --platform android
-```
-
-> **注意**: Androidビルド時、`react-native-reanimated`の互換性問題解決のため、`patch-package`が自動的に実行されます。
-
----
-
-## 📜 ライセンス
-
-このプロジェクトはMITライセンスの下でライセンスされています。
+Expo SDK 54 / React Native 0.81.5 / TypeScript / SQLite / localStorage。バックエンドは不要です。

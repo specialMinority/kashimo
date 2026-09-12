@@ -1,3 +1,4 @@
+import { AppText as Text } from '../components/AppText';
 /**
  * Add Screen - 거래 등록
  * 새 거래 입력 폼
@@ -6,7 +7,6 @@
 import React, { useState } from 'react';
 import {
     View,
-    Text,
     StyleSheet,
     TextInput,
     TouchableOpacity,
@@ -15,7 +15,7 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 import { TransactionType, CreateTransactionInput } from '../types';
 import { TRANSACTION_TYPE_LABELS } from '../constants';
@@ -25,6 +25,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootTabParamList } from '../navigation/TabNavigator';
 import { CustomAlertModal } from '../components/CustomAlertModal';
+import { ScreenHeading } from '../components/Brand';
+import { validDateInput } from '../utils/date';
 
 export default function AddScreen() {
     const [counterparty, setCounterparty] = useState('');
@@ -59,7 +61,7 @@ export default function AddScreen() {
             showAlert('エラー', '相手の名前を入力してください');
             return;
         }
-        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+        if (!amount || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
             showAlert('エラー', '金額を正しく入力してください');
             return;
         }
@@ -73,7 +75,7 @@ export default function AddScreen() {
 
             // 날짜 형식 검증 (YYYY-MM-DD)
             const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (!dateRegex.test(formattedDate)) {
+            if (!dateRegex.test(formattedDate) || !validDateInput(formattedDate)) {
                 showAlert('エラー', '日付はYYYY-MM-DD、またはYYYYMMDD形式で入力してください');
                 return;
             }
@@ -147,13 +149,14 @@ export default function AddScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
         >
-            <ScrollView style={styles.scrollView}>
+            <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <View style={styles.form}>
+                    <ScreenHeading eyebrow="NEW RECORD" title="貸し借りを、ひとつ記録。" description="忘れないうちに。必要なことだけ、シンプルに。" />
                     {/* 거래 유형 선택 */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>取引タイプ *</Text>
                         <View style={styles.typeSelector}>
-                            <TouchableOpacity
+                            <TouchableOpacity accessibilityRole="button"
                                 style={[
                                     styles.typeButton,
                                     type === 'lent' && styles.typeButtonActive,
@@ -174,7 +177,7 @@ export default function AddScreen() {
                                 </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
+                            <TouchableOpacity accessibilityRole="button"
                                 style={[
                                     styles.typeButton,
                                     type === 'borrowed' && styles.typeButtonActive,
@@ -202,6 +205,7 @@ export default function AddScreen() {
                         <Text style={styles.label}>相手の名前 *</Text>
                         <TextInput
                             style={styles.input}
+                            accessibilityLabel="相手の名前"
                             placeholder="例: 田中太郎"
                             placeholderTextColor={colors.neutral.textTertiary}
                             value={counterparty}
@@ -216,6 +220,7 @@ export default function AddScreen() {
                             <Text style={styles.currencyPrefix}>¥</Text>
                             <TextInput
                                 style={[styles.input, styles.amountInput]}
+                                accessibilityLabel="金額"
                                 placeholder="50000"
                                 placeholderTextColor={colors.neutral.textTertiary}
                                 value={amount}
@@ -230,7 +235,8 @@ export default function AddScreen() {
                         <Text style={styles.label}>返済期限 (任意)</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="2026-02-24"
+                            accessibilityLabel="返済期限"
+                            placeholder="YYYY-MM-DD"
                             placeholderTextColor={colors.neutral.textTertiary}
                             value={dueDate}
                             onChangeText={setDueDate}
@@ -243,6 +249,7 @@ export default function AddScreen() {
                         <Text style={styles.label}>メモ (任意)</Text>
                         <TextInput
                             style={[styles.input, styles.memoInput]}
+                            accessibilityLabel="メモ"
                             placeholder="例: ランチ代、飲み会"
                             placeholderTextColor={colors.neutral.textTertiary}
                             value={memo}
@@ -253,7 +260,7 @@ export default function AddScreen() {
                     </View>
 
                     {/* 제출 버튼 */}
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                         style={[
                             styles.submitButton,
                             isSubmitting && styles.submitButtonDisabled
@@ -261,7 +268,7 @@ export default function AddScreen() {
                         onPress={handleSubmit}
                         disabled={isSubmitting}
                     >
-                        <Ionicons name="checkmark-circle" size={24} color={colors.neutral.white} />
+                        <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="checkmark-circle" size={24} color={colors.neutral.white} />
                         <Text style={styles.submitButtonText}>
                             {isSubmitting ? '登録中...' : '登録する'}
                         </Text>
@@ -289,12 +296,15 @@ const styles = StyleSheet.create({
     },
     form: {
         padding: spacing.lg,
+        width: '100%',
+        maxWidth: 640,
+        alignSelf: 'center',
     },
     inputGroup: {
         marginBottom: spacing.lg,
     },
     label: {
-        fontSize: typography.fontSize.md,
+        fontSize: typography.fontSize.sm,
         fontWeight: '600',
         color: colors.neutral.textPrimary,
         marginBottom: spacing.sm,

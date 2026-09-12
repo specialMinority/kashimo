@@ -1,6 +1,7 @@
+import { AppText as Text } from './AppText';
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
 
 interface ReminderBannerProps {
@@ -16,7 +17,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({ count, onPress, 
         <View style={styles.container}>
             <TouchableOpacity style={styles.content} onPress={onPress}>
                 <View style={styles.iconContainer}>
-                    <Ionicons name="notifications" size={20} color={colors.neutral.white} />
+                    <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="notifications" size={20} color={colors.neutral.white} />
                 </View>
                 <View style={styles.textContainer}>
                     <Text style={styles.title}>今日が期限の取引があります</Text>
@@ -24,7 +25,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({ count, onPress, 
                 </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Ionicons name="close" size={20} color={colors.neutral.textSecondary} />
+                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="close" size={20} color={colors.neutral.textSecondary} />
             </TouchableOpacity>
         </View>
     );

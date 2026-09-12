@@ -1,3 +1,4 @@
+import { AppText as Text } from '../components/AppText';
 /**
  * Detail Screen - 거래 상세
  * 거래 정보 표시 및 수정/삭제/정산완료 기능
@@ -6,15 +7,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
-    Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
     Alert,
     ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, shadows, typography, formatCurrency, getDDay } from '../styles/theme';
 import { Transaction } from '../types';
@@ -22,6 +22,7 @@ import { TRANSACTION_TYPE_LABELS, TRANSACTION_STATUS_LABELS } from '../constants
 import { getTransaction, removeTransaction, markTransactionComplete, revertTransactionStatus } from '../services/database';
 import { cancelTransactionReminders, scheduleTransactionReminders } from '../services/notifications';
 import { CustomAlertModal } from '../components/CustomAlertModal';
+import { isOverdueDate } from '../utils/date';
 
 // 네비게이션 타입
 type RootStackParamList = {
@@ -55,9 +56,7 @@ export default function DetailScreen() {
         }
     }, [transactionId]);
 
-    useEffect(() => {
-        loadTransaction();
-    }, [loadTransaction]);
+    useFocusEffect(useCallback(() => { void loadTransaction(); }, [loadTransaction]));
 
     // Custom Alert State
     const [alertConfig, setAlertConfig] = useState<{
@@ -145,9 +144,9 @@ export default function DetailScreen() {
     if (!transaction) {
         return (
             <View style={[styles.container, styles.loadingContainer]}>
-                <Ionicons name="alert-circle-outline" size={48} color={colors.semantic.error} />
+                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="alert-circle-outline" size={48} color={colors.semantic.error} />
                 <Text style={styles.errorText}>取引が見つかりません</Text>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
@@ -158,7 +157,7 @@ export default function DetailScreen() {
     }
 
     const isCompleted = transaction.status === 'completed';
-    const isOverdue = !isCompleted && transaction.dueDate && new Date(transaction.dueDate) < new Date();
+    const isOverdue = !isCompleted && transaction.dueDate && isOverdueDate(transaction.dueDate);
     const isLent = transaction.type === 'lent';
 
     // 정산 취소 처리 (미완료로 되돌리기)
@@ -285,19 +284,19 @@ export default function DetailScreen() {
             {/* 액션 버튼들 */}
             <View style={styles.actionContainer}>
                 {isCompleted ? (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                         style={[styles.actionButton, styles.revertButton]}
                         onPress={handleRevert}
                     >
-                        <Ionicons name="refresh-circle" size={24} color={colors.neutral.textSecondary} />
+                        <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="refresh-circle" size={24} color={colors.neutral.textSecondary} />
                         <Text style={[styles.actionButtonText, styles.revertButtonText]}>精算を取り消す</Text>
                     </TouchableOpacity>
                 ) : (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                         style={[styles.actionButton, styles.completeButton]}
                         onPress={handleComplete}
                     >
-                        <Ionicons name="checkmark-circle" size={24} color={colors.neutral.white} />
+                        <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="checkmark-circle" size={24} color={colors.neutral.white} />
                         <Text style={styles.actionButtonText}>精算完了</Text>
                     </TouchableOpacity>
                 )}
@@ -305,22 +304,22 @@ export default function DetailScreen() {
 
             {!isCompleted && (
                 <View style={styles.actionContainer}>
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                         style={[styles.actionButton, styles.editButton]}
                         onPress={() => navigation.navigate('Edit', { transactionId })}
                     >
-                        <Ionicons name="create-outline" size={24} color={colors.neutral.white} />
+                        <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="create-outline" size={24} color={colors.neutral.white} />
                         <Text style={styles.actionButtonText}>編集</Text>
                     </TouchableOpacity>
                 </View>
             )}
 
             <View style={styles.actionContainer}>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                     style={[styles.actionButton, styles.deleteButton]}
                     onPress={handleDelete}
                 >
-                    <Ionicons name="trash-outline" size={24} color={colors.neutral.white} />
+                    <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="trash-outline" size={24} color={colors.neutral.white} />
                     <Text style={styles.actionButtonText}>削除</Text>
                 </TouchableOpacity>
             </View>

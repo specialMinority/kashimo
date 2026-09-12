@@ -1,390 +1,124 @@
-/**
- * Home Screen - 대시보드
- * 받을 돈/갚을 돈 합계 및 이번 주 예정 거래 표시
- */
-
-import React, { useState, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    RefreshControl,
-    ActivityIndicator,
-    Alert,
-    TouchableOpacity,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { AppText as Text } from '../components/AppText';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, borderRadius, shadows, typography, formatCurrency, getDDay } from '../styles/theme';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { colors, spacing, borderRadius, formatCurrency } from '../styles/theme';
 import { getDashboardSummary, markTransactionComplete } from '../services/database';
-import { cancelTransactionReminders, checkRemindersOnAppLoad, sendWebNotification } from '../services/notifications';
-import { ReminderBanner } from '../components/ReminderBanner';
-import { CustomAlertModal } from '../components/CustomAlertModal';
+import { cancelTransactionReminders } from '../services/notifications';
+import { CustomAlertModal, AlertButton } from '../components/CustomAlertModal';
+import { CatEmpty, CatHero } from '../components/Brand';
+import { TransactionRow } from '../components/TransactionRow';
 import { Transaction, DashboardSummary } from '../types';
+import { localDateKey } from '../utils/date';
+import type { RootStackParamList } from '../../App';
 
-// ...
-
-// 초기 빈 상태
-const EMPTY_SUMMARY: DashboardSummary = {
-    totalToReceive: 0,
-    totalToPay: 0,
-    receiveCount: 0,
-    payCount: 0,
-    upcomingTransactions: [],
-};
+const EMPTY: DashboardSummary = { totalToReceive: 0, totalToPay: 0, receiveCount: 0, payCount: 0, upcomingTransactions: [] };
 
 export default function HomeScreen() {
-    const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
-    const [refreshing, setRefreshing] = useState(false);
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [summary, setSummary] = useState(EMPTY);
     const [loading, setLoading] = useState(true);
-    const [dueTodayCount, setDueTodayCount] = useState(0);
-    const [bannerVisible, setBannerVisible] = useState(true);
-
-    // Custom Alert State (MOVED UP to fix Error #310)
-    const [alertConfig, setAlertConfig] = useState<{
-        visible: boolean;
-        title: string;
-        message?: string;
-        buttons: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[];
-    }>({ visible: false, title: '', buttons: [] });
-
-    const showAlert = (title: string, message: string, buttons: any[] = []) => {
-        setAlertConfig({ visible: true, title, message, buttons });
-    };
-
-    const closeAlert = () => {
-        setAlertConfig(prev => ({ ...prev, visible: false }));
-    };
-
-    // 🔥 Firestore에서 거래 데이터 로드
-    const loadData = useCallback(async () => {
-        try {
-            const data = await getDashboardSummary();
-            setSummary(data);
-
-            // 오늘 마감인 항목 체크
-            const todayStr = new Date().toISOString().split('T')[0];
-            const dueCount = data.upcomingTransactions.filter(t => t.dueDate === todayStr).length;
-            setDueTodayCount(dueCount);
-
-            if (dueCount > 0) {
-                // 웹 알림 권한 요청 및 시스템 알림
-                await checkRemindersOnAppLoad();
-                sendWebNotification('カシモ', `今日が期限の取引が${dueCount}件あります`);
-            }
-
-            console.log('📊 [HomeScreen] loadData - Summary received:', {
-                totalToReceive: data.totalToReceive,
-                totalToPay: data.totalToPay,
-                upcomingCount: data.upcomingTransactions.length
-            });
-            console.log('✅ Dashboard loaded:', data);
-        } catch (error) {
-            console.error('❌ Failed to load dashboard:', error);
-        } finally {
-            setLoading(false);
-        }
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [alert, setAlert] = useState<{ visible: boolean; title: string; message: string; buttons: AlertButton[] }>({ visible: false, title: '', message: '', buttons: [] });
+    const close = () => setAlert(a => ({ ...a, visible: false }));
+    const load = useCallback(async () => {
+        try { setSummary(await getDashboardSummary()); setError(false); }
+        catch { setError(true); }
+        finally { setLoading(false); }
     }, []);
+    useFocusEffect(useCallback(() => { void load(); }, [load]));
+    const goAdd = () => navigation.navigate('Main', { screen: 'Add' });
+    const goList = () => navigation.navigate('Main', { screen: 'List' });
+    const dueToday = summary.upcomingTransactions.filter(t => t.dueDate === localDateKey()).length;
 
-    // 🔄 탭 포커스 시 데이터 새로고침
-    useFocusEffect(
-        useCallback(() => {
-            loadData();
-        }, [loadData])
-    );
+    const complete = (t: Transaction) => setAlert({
+        visible: true, title: '精算完了', message: t.counterparty + 'さんとの取引を精算済みにしますか？',
+        buttons: [
+            { text: 'キャンセル', style: 'cancel', onPress: close },
+            { text: '完了にする', onPress: async () => {
+                close(); setBusy(true);
+                try { await markTransactionComplete(t.id); await cancelTransactionReminders(t.id); await load(); }
+                catch { setAlert({ visible: true, title: '処理できませんでした', message: 'もう一度お試しください。', buttons: [{ text: '確認', onPress: close }] }); }
+                finally { setBusy(false); }
+            } },
+        ],
+    });
 
-    const onRefresh = async () => {
-        setRefreshing(true);
-        await loadData();
-        setRefreshing(false);
-    };
-
-    if (loading) {
-        return (
-            <View style={[styles.container, styles.loadingContainer]}>
-                <ActivityIndicator size="large" color={colors.primary.main} />
-                <Text style={styles.loadingText}>読み込み中...</Text>
+    return <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.primary.main} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}>
+        <CatHero onAdd={goAdd} />
+        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>いまの貸し借り</Text><Text style={styles.small}>未精算の記録</Text></View>
+        {loading ? <ActivityIndicator color={colors.primary.main} style={styles.loading} /> : error ? <TouchableOpacity accessibilityRole="button" onPress={load} style={styles.error}><Text style={styles.errorText}>記録を読み込めませんでした。タップして再試行</Text></TouchableOpacity> : <View style={styles.summary}>
+            <View style={[styles.card, styles.receive]}>
+                <View style={styles.cardLabel}><Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="arrow-down-circle-outline" size={21} color={colors.neutral.white} /><Text style={styles.receiveLabel}>受け取る予定</Text></View>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.amount, styles.receiveAmount]}>{formatCurrency(summary.totalToReceive)}</Text>
+                <Text style={styles.receiveCount}>{summary.receiveCount}件の貸したお金</Text>
             </View>
-        );
-    }
-
-    const handleSwipeComplete = async (transaction: Transaction) => {
-        showAlert(
-            '精算完了',
-            `${transaction.counterparty}さんとの取引を精算済みにしますか？`,
-            [
-                { text: 'キャンセル', style: 'cancel', onPress: closeAlert },
-                {
-                    text: '完了にする',
-                    onPress: async () => {
-                        closeAlert();
-                        try {
-                            await markTransactionComplete(transaction.id);
-                            await cancelTransactionReminders(transaction.id);
-                            // 목록에서 제거 (낙관적 업데이트)
-                            setSummary(prev => ({
-                                ...prev,
-                                upcomingTransactions: prev.upcomingTransactions.filter(t => t.id !== transaction.id)
-                            }));
-
-                            // 성공 팝업
-                            setTimeout(() => {
-                                showAlert('成功', '精算完了しました', [{ text: '確認', onPress: closeAlert }]);
-                            }, 300);
-
-                            loadData(); // 데이터 최신화
-                        } catch (error) {
-                            Alert.alert('エラー', '処理に失敗しました');
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
-    const renderRightActions = (progress: any, dragX: any, item: Transaction) => {
-        return (
-            <TouchableOpacity
-                style={styles.completeAction}
-                onPress={() => handleSwipeComplete(item)}
-            >
-                <Ionicons name="checkmark-circle" size={24} color={colors.neutral.white} />
-                <Text style={styles.actionText}>完了</Text>
-            </TouchableOpacity>
-        );
-    };
-
-    return (
-        <ScrollView
-            style={styles.container}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-        >
-            {/* 리마인더 배너 (오늘 마감) */}
-            {bannerVisible && dueTodayCount > 0 && (
-                <ReminderBanner
-                    count={dueTodayCount}
-                    onPress={() => {
-                        // 스크롤 내려서 보여주거나 필터링 (여기선 일단 닫기)
-                        setBannerVisible(false);
-                    }}
-                    onClose={() => setBannerVisible(false)}
-                />
-            )}
-
-            {/* 요약 카드들 */}
-            <View style={styles.summaryContainer}>
-                {/* 받을 돈 카드 */}
-                <View style={[styles.summaryCard, styles.receiveCard]}>
-                    <View style={styles.cardHeader}>
-                        <Ionicons name="arrow-down-circle" size={24} color={colors.primary.main} />
-                        <Text style={styles.cardLabel}>受け取る予定</Text>
-                    </View>
-                    <Text style={[styles.cardAmount, { color: colors.primary.main }]}>
-                        {formatCurrency(summary.totalToReceive)}
-                    </Text>
-                    <Text style={styles.cardCount}>{summary.receiveCount}人から</Text>
-                </View>
-
-                {/* 갚을 돈 카드 */}
-                <View style={[styles.summaryCard, styles.payCard]}>
-                    <View style={styles.cardHeader}>
-                        <Ionicons name="arrow-up-circle" size={24} color={colors.accent.coral} />
-                        <Text style={styles.cardLabel}>返す予定</Text>
-                    </View>
-                    <Text style={[styles.cardAmount, { color: colors.accent.coral }]}>
-                        {formatCurrency(summary.totalToPay)}
-                    </Text>
-                    <Text style={styles.cardCount}>{summary.payCount}人に</Text>
-                </View>
+            <View style={[styles.card, styles.pay]}>
+                <View style={styles.cardLabel}><Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="arrow-up-circle-outline" size={21} color={colors.money.pay} /><Text style={styles.payLabel}>返す予定</Text></View>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.amount, styles.payAmount]}>{formatCurrency(summary.totalToPay)}</Text>
+                <Text style={styles.payCount}>{summary.payCount}件の借りたお金</Text>
             </View>
-
-            {/* 이번 주 예정 거래 */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>今週の予定 (スワイプで完了)</Text>
-                {summary.upcomingTransactions.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyText}>予定された取引はありません</Text>
-                    </View>
-                ) : (
-                    summary.upcomingTransactions.map((item) => (
-                        <Swipeable
-                            key={item.id}
-                            renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
-                            friction={2}
-                            rightThreshold={40}
-                        >
-                            <View style={styles.transactionItem}>
-                                <View style={styles.transactionLeft}>
-                                    <Text style={styles.dDayBadge}>{getDDay(item.dueDate as any)}</Text>
-                                    <View>
-                                        <Text style={styles.transactionTitle}>{item.counterparty}</Text>
-                                        <View style={styles.transactionMeta}>
-                                            <Text style={styles.transactionDate}>{item.dueDate}</Text>
-                                            <Text style={styles.transactionType}>
-                                                {item.type === 'lent' ? '貸した' : '借りた'}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-                                <Text style={[
-                                    styles.transactionAmount,
-                                    { color: item.type === 'lent' ? colors.primary.main : colors.accent.coral }
-                                ]}>
-                                    {formatCurrency(item.amount)}
-                                </Text>
-                            </View>
-                        </Swipeable>
-                    ))
-                )}
-            </View>
-
-            <CustomAlertModal
-                visible={alertConfig.visible}
-                title={alertConfig.title}
-                message={alertConfig.message}
-                buttons={alertConfig.buttons}
-                onDismiss={closeAlert}
-            />
-        </ScrollView >
-    );
+        </View>}
+        {dueToday > 0 && <TouchableOpacity accessibilityRole="button" onPress={goList} style={styles.reminder}>
+            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="notifications-outline" color={colors.accent.coral} size={19} />
+            <Text style={styles.reminderText}>今日が期限の取引が{dueToday}件あります</Text>
+            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="chevron-forward" color={colors.accent.coral} size={16} />
+        </TouchableOpacity>}
+        <View style={styles.sectionHeading}>
+            <View><Text style={styles.sectionTitle}>今週の予定</Text><Text style={styles.small}>今日から7日先まで</Text></View>
+            <TouchableOpacity accessibilityRole="button" onPress={goList} style={styles.viewAll}><Text style={styles.viewAllText}>すべて見る</Text><Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="arrow-forward" color={colors.primary.main} size={17} /></TouchableOpacity>
+        </View>
+        {!loading && !error && (summary.upcomingTransactions.length ? summary.upcomingTransactions.map(t =>
+            <Swipeable key={t.id} enabled={!busy} overshootRight={false} renderRightActions={() => <TouchableOpacity accessibilityRole="button" accessibilityLabel={t.counterparty + 'の精算を完了'} onPress={() => complete(t)} disabled={busy} style={styles.swipe}>
+                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="checkmark" size={23} color={colors.neutral.white} /><Text style={styles.swipeText}>完了</Text>
+            </TouchableOpacity>}>
+                <TransactionRow transaction={t} disabled={busy} onPress={() => navigation.navigate('Detail', { transactionId: t.id })} />
+            </Swipeable>) : <CatEmpty title="今週は、のんびりいこう。" description="これから7日間の返済予定はありません。" onAdd={summary.receiveCount + summary.payCount === 0 ? goAdd : undefined} />)}
+        {Platform.OS === 'web' && <View style={styles.install}>
+            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="phone-portrait-outline" color={colors.primary.main} size={21} />
+            <View style={styles.installCopy}><Text style={styles.installTitle}>いつも、ホーム画面に。</Text><Text style={styles.installText}>iPhoneのSafariで「共有」→「ホーム画面に追加」。{ '\n' }一度読み込めば、オフラインでも記録できます。</Text></View>
+        </View>}
+        <Text style={styles.footer}>あなたの記録を、カシモがそっとお手伝い。</Text>
+        <CustomAlertModal visible={alert.visible} title={alert.title} message={alert.message} buttons={alert.buttons} onDismiss={close} />
+    </ScrollView>;
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.neutral.background,
-    },
-    loadingContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: spacing.sm,
-        color: colors.neutral.textSecondary,
-        ...typography.body2,
-    },
-    summaryContainer: {
-        flexDirection: 'row',
-        padding: spacing.md,
-        gap: spacing.md,
-    },
-    summaryCard: {
-        flex: 1,
-        backgroundColor: colors.neutral.white,
-        borderRadius: borderRadius.lg,
-        padding: spacing.md,
-        ...shadows.sm,
-    },
-    receiveCard: {
-        borderTopWidth: 4,
-        borderTopColor: colors.primary.main,
-    },
-    payCard: {
-        borderTopWidth: 4,
-        borderTopColor: colors.accent.coral,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
-        marginBottom: spacing.xs,
-    },
-    cardLabel: {
-        ...typography.caption,
-        color: colors.neutral.textSecondary,
-        fontWeight: 'bold',
-    },
-    cardAmount: {
-        ...typography.h3,
-        fontWeight: 'bold',
-        marginBottom: spacing.xs,
-    },
-    cardCount: {
-        ...typography.caption,
-        color: colors.neutral.textTertiary,
-        textAlign: 'right',
-    },
-    section: {
-        padding: spacing.md,
-    },
-    sectionTitle: {
-        ...typography.subtitle1,
-        color: colors.neutral.textPrimary,
-        marginBottom: spacing.sm,
-    },
-    emptyState: {
-        padding: spacing.xl,
-        alignItems: 'center',
-        backgroundColor: colors.neutral.white,
-        borderRadius: borderRadius.md,
-    },
-    emptyText: {
-        color: colors.neutral.textTertiary,
-        ...typography.body2,
-    },
-    transactionItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: colors.neutral.white,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        marginBottom: spacing.sm,
-        ...shadows.sm,
-    },
-    transactionLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-    },
-    dDayBadge: {
-        backgroundColor: colors.primary.light,
-        color: colors.primary.dark,
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderRadius: borderRadius.sm,
-        fontSize: 12,
-        fontWeight: 'bold',
-        overflow: 'hidden',
-    },
-    transactionTitle: {
-        ...typography.body1,
-        fontWeight: '500',
-        color: colors.neutral.textPrimary,
-    },
-    transactionMeta: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-    },
-    transactionDate: {
-        ...typography.caption,
-        color: colors.neutral.textTertiary,
-    },
-    transactionType: {
-        ...typography.caption,
-        color: colors.neutral.textSecondary,
-    },
-    transactionAmount: {
-        ...typography.subtitle1,
-        fontWeight: 'bold',
-    },
-    completeAction: {
-        backgroundColor: colors.semantic.success,
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: 80,
-        borderRadius: borderRadius.md,
-        marginBottom: spacing.sm,
-        marginLeft: spacing.sm,
-    },
-    actionText: {
-        color: colors.neutral.white,
-        fontSize: 12,
-        fontWeight: 'bold',
-        marginTop: 4,
-    },
+    container: { flex: 1, backgroundColor: colors.neutral.background },
+    content: { padding: spacing.lg, paddingBottom: spacing.xl },
+    sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg, marginBottom: spacing.md, gap: spacing.sm },
+    sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.neutral.textPrimary },
+    small: { fontSize: 10, color: colors.neutral.textSecondary, marginTop: spacing.xs },
+    summary: { flexDirection: 'row', gap: spacing.sm },
+    card: { flex: 1, borderRadius: borderRadius.lg, padding: spacing.md, minHeight: 140, justifyContent: 'space-between' },
+    receive: { backgroundColor: colors.primary.main },
+    pay: { backgroundColor: colors.surface.peach },
+    cardLabel: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    receiveLabel: { color: colors.neutral.white, fontSize: 11, fontWeight: '500' },
+    payLabel: { color: colors.money.pay, fontSize: 11, fontWeight: '500' },
+    amount: { fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'], marginVertical: spacing.md, letterSpacing: -0.8 },
+    receiveAmount: { color: colors.neutral.white },
+    payAmount: { color: colors.money.pay },
+    receiveCount: { color: colors.surface.whiteMuted, fontSize: 10 },
+    payCount: { color: colors.accent.coralDark, fontSize: 10 },
+    viewAll: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 44 },
+    viewAllText: { fontSize: 12, color: colors.primary.main, fontWeight: '600' },
+    reminder: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, marginTop: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.surface.peach },
+    reminderText: { flex: 1, color: colors.accent.coralDark, fontSize: 12 },
+    install: { flexDirection: 'row', gap: spacing.md, paddingTop: spacing.lg, marginTop: spacing.lg, borderTopWidth: 1, borderTopColor: colors.neutral.border },
+    installCopy: { flex: 1 },
+    installTitle: { fontSize: 13, fontWeight: '600', color: colors.neutral.textPrimary, marginBottom: spacing.xs },
+    installText: { fontSize: 11, lineHeight: 20, color: colors.neutral.textSecondary },
+    footer: { fontSize: 10, textAlign: 'center', color: colors.neutral.textTertiary, paddingTop: spacing.lg },
+    loading: { padding: spacing.lg },
+    error: { padding: spacing.md, backgroundColor: colors.surface.danger, borderRadius: borderRadius.md },
+    errorText: { fontSize: 12, color: colors.semantic.error },
+    swipe: { width: 70, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary.main, borderRadius: borderRadius.md, marginBottom: spacing.sm, marginLeft: spacing.sm, gap: spacing.xs },
+    swipeText: { color: colors.neutral.white, fontSize: 12 },
 });

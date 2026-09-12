@@ -1,3 +1,5 @@
+import appConfig from '../../app.json';
+import { AppText as Text } from '../components/AppText';
 /**
  * Settings Screen
  * 알림 설정, 앱 정보 표시
@@ -6,7 +8,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
-    Text,
     StyleSheet,
     TouchableOpacity,
     ScrollView,
@@ -17,7 +18,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ScreenHeading } from '../components/Brand';
 import Constants from 'expo-constants';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
@@ -35,7 +37,7 @@ import { getAllTransactions, replaceAllTransactions } from '../services/database
 // 렌더링 에러 방지를 위한 Custom Toggle Component
 const CustomSwitch = ({ value, onValueChange }: { value: boolean, onValueChange: (val: boolean) => void }) => {
     return (
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
             onPress={() => onValueChange(!value)}
             activeOpacity={0.8}
             style={{
@@ -382,7 +384,9 @@ export default function SettingsScreen() {
 
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: spacing.xl }} showsVerticalScrollIndicator={false}>
+            <ScreenHeading eyebrow="MAKE YOURSELF AT HOME" title="あなたらしく、使おう。" description="通知とバックアップを、ここで管理。" />
+            {Platform.OS === 'web' && <View style={[styles.card, { marginBottom: spacing.lg }]}><Text style={styles.label}>iPhoneでアプリのように使う</Text><Text style={[styles.subLabel, { lineHeight: 22 }]}>Safariの共有メニューから「ホーム画面に追加」を選択してください。ブラウザ版の期限確認はアプリを開いたときに行います。自動の予約通知はAndroidアプリで利用できます。</Text></View>}
             {/* 알림 설정 섹션 */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>通知設定</Text>
@@ -390,7 +394,7 @@ export default function SettingsScreen() {
                 <View style={styles.card}>
                     <View style={styles.row}>
                         <View style={styles.labelContainer}>
-                            <Ionicons name="notifications-outline" size={24} color={colors.primary.main} />
+                            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="notifications-outline" size={24} color={colors.primary.main} />
                             <Text style={styles.label}>返済リマインダー</Text>
                         </View>
                         <CustomSwitch
@@ -404,7 +408,7 @@ export default function SettingsScreen() {
                             <Text style={styles.subLabel}>通知タイミング</Text>
                             <View style={styles.daysRow}>
                                 {[1, 3, 7].map((day) => (
-                                    <TouchableOpacity
+                                    <TouchableOpacity accessibilityRole="button"
                                         key={day}
                                         style={[
                                             styles.dayButton,
@@ -424,7 +428,7 @@ export default function SettingsScreen() {
                         </View>
                     )}
 
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                         style={styles.testButton}
                         onPress={handleTestNotification}
                         disabled={loading}
@@ -441,20 +445,20 @@ export default function SettingsScreen() {
                 <Text style={styles.sectionTitle}>クラウド同期 (Google Drive)</Text>
                 <View style={styles.card}>
                     {!user ? (
-                        <TouchableOpacity
+                        <TouchableOpacity accessibilityRole="button"
                             style={styles.googleButton}
                             onPress={handleGoogleLogin}
                             disabled={!request}
                         >
-                            <Ionicons name="logo-google" size={20} color="white" />
+                            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="logo-google" size={20} color="white" />
                             <Text style={styles.googleButtonText}>Googleでログイン</Text>
                         </TouchableOpacity>
                     ) : (
                         <View>
                             <View style={styles.userInfoRow}>
-                                <Ionicons name="person-circle-outline" size={24} color={colors.primary.main} />
+                                <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="person-circle-outline" size={24} color={colors.primary.main} />
                                 <Text style={styles.userEmail}>{user.email}</Text>
-                                <TouchableOpacity onPress={handleGoogleLogout}>
+                                <TouchableOpacity accessibilityRole="button" onPress={handleGoogleLogout}>
                                     <Text style={styles.logoutText}>ログアウト</Text>
                                 </TouchableOpacity>
                             </View>
@@ -462,21 +466,21 @@ export default function SettingsScreen() {
                             <View style={styles.divider} />
 
                             <View style={[styles.row, { marginTop: 10 }]}>
-                                <TouchableOpacity
+                                <TouchableOpacity accessibilityRole="button"
                                     style={[styles.smallButton, { backgroundColor: colors.primary.main }]}
                                     onPress={handleCloudBackup}
                                     disabled={cloudLoading}
                                 >
-                                    <Ionicons name="cloud-upload" size={18} color="white" />
+                                    <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="cloud-upload" size={18} color="white" />
                                     <Text style={styles.smallButtonText}>{cloudLoading ? '処理中...' : 'クラウドバックアップ'}</Text>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity
+                                <TouchableOpacity accessibilityRole="button"
                                     style={[styles.smallButton, { backgroundColor: colors.accent.coral }]}
                                     onPress={handleCloudRestore}
                                     disabled={cloudLoading}
                                 >
-                                    <Ionicons name="cloud-download" size={18} color="white" />
+                                    <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="cloud-download" size={18} color="white" />
                                     <Text style={styles.smallButtonText}>クラウド復元</Text>
                                 </TouchableOpacity>
                             </View>
@@ -489,20 +493,20 @@ export default function SettingsScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>ローカルデータ管理</Text>
                 <View style={styles.card}>
-                    <TouchableOpacity style={styles.settingItem} onPress={exportData}>
+                    <TouchableOpacity accessibilityRole="button" style={styles.settingItem} onPress={exportData}>
                         <View style={styles.settingInfo}>
-                            <Ionicons name="document-text-outline" size={24} color={colors.neutral.textSecondary} />
+                            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="document-text-outline" size={24} color={colors.neutral.textSecondary} />
                             <Text style={styles.settingLabel}>ファイルにエクスポート (.json)</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={colors.neutral.textSecondary} />
+                        <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="chevron-forward" size={20} color={colors.neutral.textSecondary} />
                     </TouchableOpacity>
                     <View style={styles.divider} />
-                    <TouchableOpacity style={styles.settingItem} onPress={importData}>
+                    <TouchableOpacity accessibilityRole="button" style={styles.settingItem} onPress={importData}>
                         <View style={styles.settingInfo}>
-                            <Ionicons name="folder-open-outline" size={24} color={colors.neutral.textSecondary} />
+                            <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="folder-open-outline" size={24} color={colors.neutral.textSecondary} />
                             <Text style={styles.settingLabel}>ファイルからインポート</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={colors.neutral.textSecondary} />
+                        <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="chevron-forward" size={20} color={colors.neutral.textSecondary} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -514,15 +518,15 @@ export default function SettingsScreen() {
                 <View style={styles.card}>
                     <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.neutral.border, paddingBottom: 15 }]}>
                         <Text style={styles.infoLabel}>バージョン</Text>
-                        <Text style={styles.infoValue}>1.0.0</Text>
+                        <Text style={styles.infoValue}>{appConfig.expo.version}</Text>
                     </View>
 
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                         style={[styles.row, { paddingTop: 15 }]}
-                        onPress={() => Linking.openURL('https://expo.dev')}
+                        onPress={() => Linking.openURL('https://github.com/specialMinority/kashimo')}
                     >
                         <Text style={styles.infoLabel}>開発者情報</Text>
-                        <Ionicons name="chevron-forward" size={20} color={colors.neutral.textTertiary} />
+                        <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name="chevron-forward" size={20} color={colors.neutral.textTertiary} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -534,7 +538,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.neutral.background,
-        padding: spacing.md,
+        padding: spacing.lg,
     },
     section: {
         marginBottom: spacing.xl,
@@ -625,12 +629,15 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.md,
     },
     settingInfo: {
+        flex: 1,
+        minWidth: 0,
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,
     },
     settingLabel: {
-        ...typography.body1,
+        flexShrink: 1,
+        ...typography.body2,
         color: colors.neutral.textPrimary,
     },
     divider: {
