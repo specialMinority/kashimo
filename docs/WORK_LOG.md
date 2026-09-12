@@ -29,7 +29,10 @@
 - TypeScript 검사 통과.
 - 저장소/알림/날짜 자동 테스트 15개 통과.
 - 웹 프로덕션 export 성공, PWA manifest/서비스 워커 생성 성공.
-- 브라우저 통합 테스트 진행 중. 실기기 Android/iPhone 테스트는 아직 하지 않았다.
+- Chrome 통합 테스트 11개 항목 통과. 선택/전체 삭제, 취소, 저장 실패/재시도, 영속성 및 합계, 등록/수정, 완료/취소, JSON 백업/복원, 오프라인, 4개 화면 폭, 런타임 오류 검증.
+- 실제 GitHub Pages 게시 및 공개 URL 스모크 검증 성공.
+- GitHub Actions Android APK 컴파일 및 업로드 성공 (첫 빌드 34701981116).
+- 실기기 Android/iPhone 설치 테스트는 수행하지 않았다.
 
 ## 납품
 - 작업 완료 시 소스 경로, 웹 URL, Android 빌드, 테스트 명령과 알려진 제한을 기록한다.
@@ -49,3 +52,10 @@
 - [Expo PWA](https://docs.expo.dev/guides/progressive-web-apps/): manifest 및 서비스 워커 구성을 확인.
 - [Expo SQLite SDK 54](https://docs.expo.dev/versions/v54.0.0/sdk/sqlite/): 독점 트랜잭션 API와 롤백 사용.
 - 설치된 Expo config 타입에서 experiments.baseUrl 지원을 확인하고 /kashimo 하위 경로에 적용.
+
+## 납품 직전 마무리
+- 최종 화면 캡처는 전환 애니메이션 종료 후 생성. 테스트 데이터는 격리된 브라우저에서만 사용.
+- 화면 읽기 도구의 체크 상태도 aria-checked로 노출.
+- 탭 라벨을 아이콘 아래로 통일하여 넓은 화면에서 겹침 제거.
+- 기존 완료/취소와 JSON 백업/복원까지 브라우저에서 추가 검증 완료.
+- 자세한 설치 방법, 검증 범위 및 기존 OAuth 제한은 DELIVERY.md 참고.

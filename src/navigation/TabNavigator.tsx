@@ -24,6 +24,7 @@ export default function TabNavigator() {
         tabBarStyle: { backgroundColor: colors.neutral.card, borderTopColor: colors.neutral.border, height: 68 + insets.bottom, paddingBottom: Math.max(insets.bottom, 8), paddingTop: 8, elevation: 0 },
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
         tabBarHideOnKeyboard: true,
+        tabBarLabelPosition: 'below-icon',
         tabBarIcon: ({ color, focused }) => <View style={{ paddingHorizontal: 14, paddingVertical: 4, borderRadius: borderRadius.round, backgroundColor: route.name === 'Add' ? colors.primary.main : focused ? colors.surface.sage : colors.surface.transparent }}>
             <Ionicons aria-hidden={true} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" name={icons[route.name]} color={route.name === 'Add' ? colors.neutral.white : color} size={22} />
         </View>,

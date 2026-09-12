@@ -21,7 +21,7 @@
 - 삭제 후 알림 정리, 실패 알림 재시도. 기존 데이터 손상 시 조용히 덮어쓰지 않는다.
 - 외부 아이콘 폰트 의존 제거, 로컬 자산 캐싱 서비스 워커와 iPhone 홈 화면용 manifest 추가.
 - 사용하지 않는 Reanimated 및 호환성 패치 제거. 기존 스와이프는 RN Animated 기반으로 유지.
-- 자동 테스트 15개 통과. 브라우저 통합 검증 및 Android APK 빌드 진행 중.
+- 자동 테스트 15개 및 브라우저 통합 11개 항목 통과. 실제 Android APK 빌드 성공. 웹 공개 배포 및 실제 URL 스모크 테스트 통과.
 - Expo EAS CLI 인증은 Not logged in. GitHub Actions에서 preview APK를 생성한다.
 
 ## 반드시 유지할 사항
@@ -32,6 +32,7 @@
 - 앱스토어 제출, 실기기 검증, 사용자 Google 로그인은 실제 수행 여부를 구분해서 기록한다.
 
 ## 상세 기록
+- [납품 및 설치 가이드](docs/DELIVERY.md)
 - [작업 및 디버깅](docs/WORK_LOG.md)
 - [이미지 생성 프롬프트 및 자산](docs/IMAGE_GENERATION.md)
 - [이전 작업 기록](docs/CONTEXT_ARCHIVE.md) — 과거 상태이며 현재 설정과 상충하면 이 문서를 우선한다.
